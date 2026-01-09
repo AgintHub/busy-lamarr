@@ -1,6 +1,5 @@
-dag_type: plain_text
-description: Generated workflow from UI, with an added epilogue to peek into the future
-  of German coal mining.
+dag_type: typed
+description: Generated workflow from UI.
 name: compose_book_on_german_coal_mining_with_epilogue
 nodes:
   conduct_research_on_german_coal_mining_history:
@@ -9,8 +8,20 @@ nodes:
       key events, figures, and sites.
     name: conduct_research_on_german_coal_mining_history
     nodes_depended_on: []
-    nodes_dependent_on:
-    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: List of significant events in German coal mining history.
+      key: key_events
+      type: List[str]
+    - description: List of notable individuals involved in German coal mining.
+      key: key_figures
+      type: List[str]
+    - description: List of important coal mining sites in Germany.
+      key: key_sites
+      type: List[str]
+    - description: Concise summary of the research findings.
+      key: summary
+      type: str
     prompt: Conduct in-depth research on the history of German coal mining from the
       early days to the present times. Identify key events, figures, and sites. Organize
       the information into a clear and concise format.
@@ -20,8 +31,20 @@ nodes:
     name: create_index_and_bibliography
     nodes_depended_on:
     - edit_and_proofread_book_contents
-    nodes_dependent_on:
-    - finalize_book_draft
+    nodes_dependent_on: []
+    output_structure:
+    - description: List of bibliography entries, each formatted as a citation string.
+      key: bibliography_entries
+      type: List[str]
+    - description: List of keywords used in the index, each as a string.
+      key: keyword_index
+      type: List[str]
+    - description: Total number of bibliography entries.
+      key: total_entries
+      type: int
+    - description: Indicates whether the index has been successfully generated.
+      key: index_ready
+      type: bool
     prompt: Create an index and bibliography for the book. List all sources cited
       in the book, including authors, titles, and publication dates. Create a keyword
       index for quick reference.
@@ -32,19 +55,20 @@ nodes:
     name: create_outline_of_book_contents
     nodes_depended_on:
     - conduct_research_on_german_coal_mining_history
-    nodes_dependent_on:
-    - write_chapter_1_intro
-    - write_chapter_2_historical_background
-    - write_chapter_3_technological_advancements
-    - write_chapter_4_social_impacts
-    - write_chapter_5_regulatory_framework
-    - write_chapter_6_recent_trends
-    - write_chapter_7_climate_change_and_sustainability
-    - write_chapter_8_mining_technologies
-    - write_chapter_9_case_studies
-    - write_chapter_10_conclusions_and_recommendations
-    - write_epilogue_chapter_11_peak_into_the_future
-    - write_epilogue_chapter_12_final_thoughts
+    nodes_dependent_on: []
+    output_structure:
+    - description: A list of chapter titles in the order they appear in the book.
+      key: chapter_titles
+      type: List[str]
+    - description: A list of main headings for each chapter.
+      key: chapter_headings
+      type: List[str]
+    - description: A list of subheadings under each main heading.
+      key: chapter_subheadings
+      type: List[str]
+    - description: A concise textual summary of the overall outline.
+      key: outline_summary
+      type: str
     prompt: Create a detailed outline of the book's contents, including chapter titles,
       headings, and subheadings. Based on the research done so far, identify the main
       topics to cover and organize them in a logical order.
@@ -65,8 +89,21 @@ nodes:
     - write_chapter_10_conclusions_and_recommendations
     - write_epilogue_chapter_11_peak_into_the_future
     - write_epilogue_chapter_12_final_thoughts
-    nodes_dependent_on:
-    - format_book_layout
+    nodes_dependent_on: []
+    output_structure:
+    - description: The fully revised and proofread manuscript text.
+      key: revised_manuscript
+      type: str
+    - description: A list of error messages or descriptions of each correction made.
+      key: corrected_errors
+      type: List[str]
+    - description: The total number of errors identified and corrected.
+      key: error_count
+      type: int
+    - description: Indicates whether the proofread process completed successfully
+        without remaining critical issues.
+      key: proofread_success
+      type: bool
     prompt: Edit and proofread the book contents for accuracy, clarity, and consistency.
       Review the entire manuscript, check for grammar, punctuation, and formatting
       errors, and make revisions as needed.
@@ -78,6 +115,23 @@ nodes:
     - format_book_layout
     - create_index_and_bibliography
     nodes_dependent_on: []
+    output_structure:
+    - description: Complete text of the finalized book manuscript.
+      key: manuscript_text
+      type: str
+    - description: Total number of pages in the finalized manuscript.
+      key: page_count
+      type: int
+    - description: True if the manuscript passes all quality checks and is ready for
+        publication.
+      key: is_polished
+      type: bool
+    - description: Number of remaining errors or issues after final review.
+      key: error_count
+      type: int
+    - description: List of notes or comments from the final review process.
+      key: review_notes
+      type: List[str]
     prompt: Finalize the book draft, incorporating all revisions and updates. Review
       the entire manuscript one last time, making sure everything is accurate, complete,
       and polished.
@@ -87,8 +141,25 @@ nodes:
     name: format_book_layout
     nodes_depended_on:
     - edit_and_proofread_book_contents
-    nodes_dependent_on:
-    - finalize_book_draft
+    nodes_dependent_on: []
+    output_structure:
+    - description: The complete formatted book layout as a single string.
+      key: formatted_document
+      type: str
+    - description: Ordered list of chapter titles included in the layout.
+      key: chapter_titles
+      type: List[str]
+    - description: List of heading level counts used (e.g., 1 for H1, 2 for H2) across
+        the document.
+      key: heading_levels
+      type: List[int]
+    - description: Total number of sections (including chapters and sub‑sections)
+        in the formatted layout.
+      key: total_sections
+      type: int
+    - description: True if the layout follows a consistent style guide, False otherwise.
+      key: is_consistent_style
+      type: bool
     prompt: Format the book layout, including chapters, headings, and sections. Use
       a consistent style and design throughout the book, making sure it is visually
       appealing and easy to read.
@@ -99,8 +170,24 @@ nodes:
     name: write_chapter_10_conclusions_and_recommendations
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: The title of the chapter (e.g., "Conclusions and Recommendations")
+      key: chapter_title
+      type: str
+    - description: A concise summary of the chapter's main findings
+      key: summary
+      type: str
+    - description: List of the most important takeaways from the book
+      key: key_takeaways
+      type: List[str]
+    - description: Specific policy recommendations for stakeholders in German coal
+        mining
+      key: policy_recommendations
+      type: List[str]
+    - description: Suggested topics for future research and study
+      key: future_research_areas
+      type: List[str]
     prompt: Write chapter 10, summarizing the main findings and providing recommendations
       for the future of German coal mining. Focus on the key takeaways, policy implications,
       and potential areas for future research.
@@ -111,8 +198,24 @@ nodes:
     name: write_chapter_1_intro
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: The title of chapter 1.
+      key: chapter_title
+      type: str
+    - description: The full introductory text for chapter 1.
+      key: introduction_text
+      type: str
+    - description: Brief background context that situates the reader within the topic.
+      key: background_context
+      type: str
+    - description: List of key themes introduced in the introduction.
+      key: key_themes
+      type: List[str]
+    - description: List of the main arguments or points that will be explored in the
+        book.
+      key: main_arguments
+      type: List[str]
     prompt: Write the introduction to chapter 1. Set the stage for the rest of the
       book by providing context, introducing key themes, and outlining the main arguments
       to be made.
@@ -123,8 +226,23 @@ nodes:
     name: write_chapter_2_historical_background
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: Title of chapter 2
+      key: chapter_title
+      type: str
+    - description: Full text content of chapter 2
+      key: chapter_content
+      type: str
+    - description: List of key historical points covered in the chapter
+      key: key_points
+      type: List[str]
+    - description: Brief summary of the chapter
+      key: summary
+      type: str
+    - description: Number of words in the chapter content
+      key: word_count
+      type: int
     prompt: Write chapter 2, providing a historical background on German coal mining.
       Focus on the early days of coal mining, its significance, and its impact on
       the region.
@@ -135,8 +253,30 @@ nodes:
     name: write_chapter_3_technological_advancements
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: Full textual content of chapter 3.
+      key: chapter_text
+      type: str
+    - description: List of titles for each section within the chapter.
+      key: section_titles
+      type: List[str]
+    - description: List of major technological innovations described in the chapter.
+      key: key_innovations
+      type: List[str]
+    - description: List of challenges and obstacles encountered during the implementation
+        of these innovations.
+      key: challenges_faced
+      type: List[str]
+    - description: Brief summary of the chapter's main points.
+      key: summary
+      type: str
+    - description: Estimated number of pages for the chapter.
+      key: page_count
+      type: int
+    - description: List of citation strings used in the chapter.
+      key: references
+      type: List[str]
     prompt: Write chapter 3, discussing technological advancements in German coal
       mining. Focus on the innovations, improvements, and challenges faced by coal
       miners over the years.
@@ -146,8 +286,23 @@ nodes:
     name: write_chapter_4_social_impacts
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: The title of chapter 4.
+      key: chapter_title
+      type: str
+    - description: Full textual content of chapter 4.
+      key: chapter_content
+      type: str
+    - description: List of headings for sections within chapter 4.
+      key: section_headings
+      type: List[str]
+    - description: Total number of words in chapter 4.
+      key: word_count
+      type: int
+    - description: List of citation identifiers used in chapter 4.
+      key: citations
+      type: List[str]
     prompt: Write chapter 4, examining the social impacts of German coal mining. Focus
       on the effects on local communities, labor relations, and environmental concerns.
   write_chapter_5_regulatory_framework:
@@ -157,8 +312,26 @@ nodes:
     name: write_chapter_5_regulatory_framework
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: The title of the chapter.
+      key: chapter_title
+      type: str
+    - description: A list of headings for each section within the chapter.
+      key: section_headings
+      type: List[str]
+    - description: The full textual content of the chapter.
+      key: body_text
+      type: str
+    - description: A list of bibliographic references cited in the chapter.
+      key: references
+      type: List[str]
+    - description: A concise summary of the chapter's main points.
+      key: summary
+      type: str
+    - description: The total number of words in the chapter.
+      key: word_count
+      type: int
     prompt: Write chapter 5, discussing the regulatory framework governing German
       coal mining. Focus on the laws, regulations, and policies that shape the industry.
   write_chapter_6_recent_trends:
@@ -168,8 +341,19 @@ nodes:
     name: write_chapter_6_recent_trends
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: A summary of the current state of the German coal mining industry.
+      key: current_state_summary
+      type: str
+    - description: A list of major challenges currently faced by the German coal mining
+        industry.
+      key: key_challenges
+      type: List[str]
+    - description: A list of potential future developments and opportunities for the
+        German coal mining industry.
+      key: future_prospects
+      type: List[str]
     prompt: Write chapter 6, examining recent trends and developments in German coal
       mining. Focus on the current state of the industry, challenges faced, and future
       prospects.
@@ -180,8 +364,30 @@ nodes:
     name: write_chapter_7_climate_change_and_sustainability
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: The title of chapter 7.
+      key: chapter_title
+      type: str
+    - description: Introductory paragraph setting the context for climate change and
+        sustainability in German coal mining.
+      key: introduction
+      type: str
+    - description: Description of how climate change impacts German coal mining operations,
+        environment, and communities.
+      key: effects_of_climate_change
+      type: str
+    - description: Key challenges faced by the coal mining industry due to climate
+        change and sustainability pressures.
+      key: challenges
+      type: str
+    - description: Potential opportunities for innovation, adaptation, and transition
+        within the industry.
+      key: opportunities
+      type: str
+    - description: Summary and concluding remarks for chapter 7.
+      key: conclusion
+      type: str
     prompt: Write chapter 7, discussing the impact of climate change and sustainability
       on German coal mining. Focus on the effects, challenges, and opportunities for
       the industry.
@@ -191,8 +397,26 @@ nodes:
     name: write_chapter_8_mining_technologies
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: Title of chapter 8.
+      key: chapter_title
+      type: str
+    - description: Full textual content of chapter 8.
+      key: chapter_content
+      type: str
+    - description: List of section headings within the chapter.
+      key: section_titles
+      type: List[str]
+    - description: List of section bodies corresponding to each heading.
+      key: section_bodies
+      type: List[str]
+    - description: Total number of words in the chapter.
+      key: word_count
+      type: int
+    - description: Whether the chapter includes references or citations.
+      key: has_references
+      type: bool
     prompt: Write chapter 8, discussing mining technologies and innovations. Focus
       on the latest advancements, improvements, and applications in coal mining.
   write_chapter_9_case_studies:
@@ -202,8 +426,29 @@ nodes:
     name: write_chapter_9_case_studies
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: Titles of each case study presented in the chapter.
+      key: case_study_titles
+      type: List[str]
+    - description: Geographic locations of the coal mining operations discussed.
+      key: case_study_locations
+      type: List[str]
+    - description: Key challenges faced by each operation, described in a separate
+        string per case study.
+      key: case_study_challenges
+      type: List[str]
+    - description: Strategies and approaches employed to overcome the challenges,
+        listed per case study.
+      key: case_study_strategies
+      type: List[str]
+    - description: Lessons learned and best practices derived from each case study.
+      key: case_study_lessons
+      type: List[str]
+    - description: A concise summary of the overall findings and insights from all
+        case studies.
+      key: overall_summary
+      type: str
     prompt: Write chapter 9, presenting case studies of successful coal mining operations.
       Focus on the challenges faced, strategies employed, and lessons learned.
   write_epilogue_chapter_11_peak_into_the_future:
@@ -213,8 +458,25 @@ nodes:
     name: write_epilogue_chapter_11_peak_into_the_future
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: The title of the chapter, e.g., 'Peak into the Future'
+      key: chapter_title
+      type: str
+    - description: A list of identified future trends in German coal mining
+      key: future_trends
+      type: List[str]
+    - description: A list of proposed or emerging innovations that could shape the
+        industry
+      key: innovations
+      type: List[str]
+    - description: A list of major challenges and obstacles anticipated for the future
+      key: challenges
+      type: List[str]
+    - description: A concise summary paragraph that synthesizes the trends, innovations,
+        and challenges
+      key: summary
+      type: str
     prompt: Write chapter 11, providing a peak into the future of German coal mining.
       Discuss potential trends, innovations, and challenges that the industry may
       face in the coming years.
@@ -225,8 +487,29 @@ nodes:
     name: write_epilogue_chapter_12_final_thoughts
     nodes_depended_on:
     - create_outline_of_book_contents
-    nodes_dependent_on:
-    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    output_structure:
+    - description: Number of the chapter in the book.
+      key: chapter_number
+      type: int
+    - description: Title of the chapter.
+      key: chapter_title
+      type: str
+    - description: Full text of the final chapter, including summary and reflections.
+      key: summary_text
+      type: str
+    - description: List of main points and takeaways presented in the chapter.
+      key: key_takeaways
+      type: List[str]
+    - description: Concluding remarks and future outlook.
+      key: concluding_remarks
+      type: str
+    - description: Word count of the chapter text.
+      key: word_count
+      type: int
+    - description: Whether the chapter has been fully written and ready for review.
+      key: is_complete
+      type: bool
     prompt: Write chapter 12, providing final thoughts and reflections on the future
       of German coal mining. Summarize the main points and takeaways from the book,
       and offer some concluding remarks.
