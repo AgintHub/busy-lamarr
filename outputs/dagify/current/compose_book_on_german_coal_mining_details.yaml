@@ -1,0 +1,180 @@
+dag_type: plain_text
+description: A workflow for composing a 10 chapter book on the history of German coal
+  mining from research to writing.
+name: compose_book_on_german_coal_mining
+nodes:
+  conduct_research_on_german_coal_mining_history:
+    agent: false
+    description: Conduct in-depth research on the history of German coal mining, covering
+      key events, figures, and sites.
+    name: conduct_research_on_german_coal_mining_history
+    nodes_depended_on: []
+    nodes_dependent_on: []
+    prompt: Conduct in-depth research on the history of German coal mining from the
+      early days to the present times. Identify key events, figures, and sites. Organize
+      the information into a clear and concise format.
+  create_index_and_bibliography:
+    agent: false
+    description: Create an index and bibliography for the book.
+    name: create_index_and_bibliography
+    nodes_depended_on:
+    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    prompt: Create an index and bibliography for the book. List all sources cited
+      in the book, including authors, titles, and publication dates. Create a keyword
+      index for quick reference.
+  create_outline_of_book_contents:
+    agent: false
+    description: Create a detailed outline of the book's contents, including chapter
+      titles, headings, and subheadings.
+    name: create_outline_of_book_contents
+    nodes_depended_on:
+    - conduct_research_on_german_coal_mining_history
+    nodes_dependent_on: []
+    prompt: Create a detailed outline of the book's contents, including chapter titles,
+      headings, and subheadings. Based on the research done so far, identify the main
+      topics to cover and organize them in a logical order.
+  edit_and_proofread_book_contents:
+    agent: false
+    description: Edit and proofread the book contents for accuracy, clarity, and consistency.
+    name: edit_and_proofread_book_contents
+    nodes_depended_on:
+    - write_chapter_1_intro
+    - write_chapter_2_historical_background
+    - write_chapter_3_technological_advancements
+    - write_chapter_4_social_impacts
+    - write_chapter_5_regulatory_framework
+    - write_chapter_6_recent_trends
+    - write_chapter_7_climate_change_and_sustainability
+    - write_chapter_8_mining_technologies
+    - write_chapter_9_case_studies
+    - write_chapter_10_conclusions_and_recommendations
+    nodes_dependent_on: []
+    prompt: Edit and proofread the book contents for accuracy, clarity, and consistency.
+      Review the entire manuscript, check for grammar, punctuation, and formatting
+      errors, and make revisions as needed.
+  finalize_book_draft:
+    agent: false
+    description: Finalize the book draft, incorporating all revisions and updates.
+    name: finalize_book_draft
+    nodes_depended_on:
+    - format_book_layout
+    - create_index_and_bibliography
+    nodes_dependent_on: []
+    prompt: Finalize the book draft, incorporating all revisions and updates. Review
+      the entire manuscript one last time, making sure everything is accurate, complete,
+      and polished.
+  format_book_layout:
+    agent: false
+    description: Format the book layout, including chapters, headings, and sections.
+    name: format_book_layout
+    nodes_depended_on:
+    - edit_and_proofread_book_contents
+    nodes_dependent_on: []
+    prompt: Format the book layout, including chapters, headings, and sections. Use
+      a consistent style and design throughout the book, making sure it is visually
+      appealing and easy to read.
+  write_chapter_10_conclusions_and_recommendations:
+    agent: false
+    description: Write chapter 10, summarizing the main findings and providing recommendations
+      for the future of German coal mining.
+    name: write_chapter_10_conclusions_and_recommendations
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 10, summarizing the main findings and providing recommendations
+      for the future of German coal mining. Focus on the key takeaways, policy implications,
+      and potential areas for future research.
+  write_chapter_1_intro:
+    agent: false
+    description: Write the introduction to chapter 1, setting the stage for the rest
+      of the book.
+    name: write_chapter_1_intro
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write the introduction to chapter 1. Set the stage for the rest of the
+      book by providing context, introducing key themes, and outlining the main arguments
+      to be made.
+  write_chapter_2_historical_background:
+    agent: false
+    description: Write chapter 2, providing a historical background on German coal
+      mining.
+    name: write_chapter_2_historical_background
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 2, providing a historical background on German coal mining.
+      Focus on the early days of coal mining, its significance, and its impact on
+      the region.
+  write_chapter_3_technological_advancements:
+    agent: false
+    description: Write chapter 3, discussing technological advancements in German
+      coal mining.
+    name: write_chapter_3_technological_advancements
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 3, discussing technological advancements in German coal
+      mining. Focus on the innovations, improvements, and challenges faced by coal
+      miners over the years.
+  write_chapter_4_social_impacts:
+    agent: false
+    description: Write chapter 4, examining the social impacts of German coal mining.
+    name: write_chapter_4_social_impacts
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 4, examining the social impacts of German coal mining. Focus
+      on the effects on local communities, labor relations, and environmental concerns.
+  write_chapter_5_regulatory_framework:
+    agent: false
+    description: Write chapter 5, discussing the regulatory framework governing German
+      coal mining.
+    name: write_chapter_5_regulatory_framework
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 5, discussing the regulatory framework governing German
+      coal mining. Focus on the laws, regulations, and policies that shape the industry.
+  write_chapter_6_recent_trends:
+    agent: false
+    description: Write chapter 6, examining recent trends and developments in German
+      coal mining.
+    name: write_chapter_6_recent_trends
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 6, examining recent trends and developments in German coal
+      mining. Focus on the current state of the industry, challenges faced, and future
+      prospects.
+  write_chapter_7_climate_change_and_sustainability:
+    agent: false
+    description: Write chapter 7, discussing the impact of climate change and sustainability
+      on German coal mining.
+    name: write_chapter_7_climate_change_and_sustainability
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 7, discussing the impact of climate change and sustainability
+      on German coal mining. Focus on the effects, challenges, and opportunities for
+      the industry.
+  write_chapter_8_mining_technologies:
+    agent: false
+    description: Write chapter 8, discussing mining technologies and innovations.
+    name: write_chapter_8_mining_technologies
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 8, discussing mining technologies and innovations. Focus
+      on the latest advancements, improvements, and applications in coal mining.
+  write_chapter_9_case_studies:
+    agent: false
+    description: Write chapter 9, presenting case studies of successful coal mining
+      operations.
+    name: write_chapter_9_case_studies
+    nodes_depended_on:
+    - create_outline_of_book_contents
+    nodes_dependent_on: []
+    prompt: Write chapter 9, presenting case studies of successful coal mining operations.
+      Focus on the challenges faced, strategies employed, and lessons learned.
