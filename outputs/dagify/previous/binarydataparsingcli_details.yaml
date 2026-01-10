@@ -1,11 +1,26 @@
-dag_type: spec
-description: Design a powerful command line tool for parsing binary data as various
-  codecs and numeric interpretations
+dag_type: stub
+description: Generated workflow from UI.
 name: binarydataparsingcli
 nodes:
   definenumericinterpretations:
     agent: false
+    code_node_type: stub
     description: Define various numeric interpretations supported by the CLI tool
+    implementation: "from pydantic import BaseModel, Field\nfrom typing import List\n\
+      \n\nclass DefinenumericinterpretationsOutput(BaseModel):\n    \"\"\"Pydantic\
+      \ model for definenumericinterpretations node outputs.\"\"\"\n    numeric_interpretations:\
+      \ List[str] = (\n        Field(..., description=\"List of numeric interpretations\
+      \ supported\")\n    )\n\n\ndef definenumericinterpretations(general_input: str,\
+      \ **kwargs) -> DefinenumericinterpretationsOutput:\n    \"\"\"\n    Returns\
+      \ a list of numeric interpretations supported by the CLI tool.\n\n    Returns\n\
+      \    -------\n    List[str]\n        A list of numeric interpretation strings\
+      \ (e.g., int8, uint16,\n        float32).\n\n    Raises\n    ------\n    ValueError\n\
+      \        If the list of numeric interpretations is empty or invalid.\n\n   \
+      \ Examples\n    --------\n    >>> definenumericinterpretations()\n    ['int8',\
+      \ 'uint8', 'int16', 'uint16', 'float32']\n\n    >>> definenumericinterpretations()\n\
+      \    ['int8', 'uint8', 'int16', 'uint16', 'float32', 'float64']\n\n    \"\"\"\
+      \n    return DefinenumericinterpretationsOutput(\n        numeric_interpretations=[],\n\
+      \    )"
     name: definenumericinterpretations
     nodes_depended_on: []
     nodes_dependent_on: []
@@ -35,9 +50,26 @@ nodes:
         summary: Returns a list of numeric interpretations supported by the CLI tool.
     prompt: List all numeric interpretations (e.g., int8, uint16, float32) that the
       CLI will support
+    shims: []
   definesupportedcodecs:
     agent: false
+    code_node_type: stub
     description: Identify and list all supported codecs for binary data interpretation
+    implementation: "from pydantic import BaseModel, Field\nfrom typing import List\n\
+      \n\nclass DefinesupportedcodecsOutput(BaseModel):\n    \"\"\"Pydantic model\
+      \ for definesupportedcodecs node outputs.\"\"\"\n    supported_codecs: List[str]\
+      \ = (\n        Field(..., description=\"List of codec names supported by the\
+      \ CLI tool\")\n    )\n\n\ndef definesupportedcodecs(general_input: str, **kwargs)\
+      \ -> DefinesupportedcodecsOutput:\n    \"\"\"\n    Generates a list of all supported\
+      \ binary data codecs for the CLI tool.\n\n    Returns\n    -------\n    List[str]\n\
+      \        List of strings representing codecs supported by the CLI tool.\n\n\
+      \    Raises\n    ------\n    ValueError\n        If no codecs are defined or\
+      \ an issue prevents fetching the supported\n        codecs.\n\n    Examples\n\
+      \    --------\n    >>> supported_codecs = definesupportedcodecs()\n    ['utf-8',\
+      \ 'ascii', 'base64', 'hex']\n\n    >>> # Example usage in downstream context:\n\
+      \    >>> if 'utf-8' in supported_codecs:\n    ...     print('UTF-8 codec is\
+      \ supported!')\n    'UTF-8 codec is supported!'\n\n    \"\"\"\n    return DefinesupportedcodecsOutput(\n\
+      \        supported_codecs=[],\n    )"
     name: definesupportedcodecs
     nodes_depended_on: []
     nodes_dependent_on: []
@@ -70,10 +102,45 @@ nodes:
         summary: Generates a list of all supported binary data codecs for the CLI
           tool.
     prompt: List all codecs that the CLI tool will support for binary data parsing
+    shims: []
   designcommandlineinterface:
     agent: false
+    code_node_type: stub
     description: Design the CLI syntax for specifying binary data files, codecs, and
       numeric interpretations
+    implementation: "from pydantic import BaseModel, Field\nfrom typing import List\n\
+      \n\nclass DefinesupportedcodecsOutput(BaseModel):\n    \"\"\"Pydantic model\
+      \ for definesupportedcodecs node outputs.\"\"\"\n    supported_codecs: List[str]\
+      \ = (\n        Field(..., description=\"List of codec names supported by the\
+      \ CLI tool\")\n    )\n\n\nclass DefinenumericinterpretationsOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for definenumericinterpretations node outputs.\"\"\
+      \"\n    numeric_interpretations: List[str] = (\n        Field(..., description=\"\
+      List of numeric interpretations supported\")\n    )\n\n\nclass DesigncommandlineinterfaceOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for designcommandlineinterface node outputs.\"\"\"\
+      \n    cli_syntax: str = Field(..., description=\"Command line syntax description\"\
+      )\n    cli_options: str = Field(..., description=\"List of CLI options available\"\
+      )\n\n\ndef designcommandlineinterface(definesupportedcodecs_input: DefinesupportedcodecsOutput,\
+      \ definenumericinterpretations_input: DefinenumericinterpretationsOutput, **kwargs)\
+      \ -> DesigncommandlineinterfaceOutput:\n    \"\"\"\n    Designs the CLI syntax\
+      \ for specifying binary data files, codecs, and numeric\n    interpretations.\n\
+      \n    Parameters\n    ----------\n    supported_codecs : List[str]\n       \
+      \ List of codec names supported by the CLI tool, provided by the\n        'definesupportedcodecs'\
+      \ node.\n    numeric_interpretations : List[str]\n        List of numeric interpretations\
+      \ supported by the CLI tool, provided\n        by the 'definenumericinterpretations'\
+      \ node.\n\n    Returns\n    -------\n    Tuple[str, List[str]]\n        A tuple\
+      \ containing the CLI syntax description as a string and a list\n        of available\
+      \ CLI options.\n\n    Raises\n    ------\n    ValueError\n        If either\
+      \ supported_codecs or numeric_interpretations is empty.\n\n    Examples\n  \
+      \  --------\n    >>> supported_codecs = ['utf-8', 'ascii']\n    >>> numeric_interpretations\
+      \ = ['int8', 'float32']\n    >>> cli_syntax, cli_options = design_cli(supported_codecs,\n\
+      \    numeric_interpretations)\n    ('binary_parser --file <path> --codec <codec>\
+      \ --interpret <interpretation>',\n    ['--file', '--codec', '--interpret'])\n\
+      \n    >>> supported_codecs = ['utf-16', 'latin1']\n    >>> numeric_interpretations\
+      \ = ['uint16', 'int32']\n    >>> cli_syntax, cli_options = design_cli(supported_codecs,\n\
+      \    numeric_interpretations)\n    ('binary_parser --file <path> --codec <codec>\
+      \ --interpret <interpretation>',\n    ['--file', '--codec', '--interpret'])\n\
+      \n    \"\"\"\n    return DesigncommandlineinterfaceOutput(\n        cli_syntax=\"\
+      \",\n        cli_options=\"\",\n    )"
     name: designcommandlineinterface
     nodes_depended_on:
     - definesupportedcodecs
@@ -124,9 +191,27 @@ nodes:
           and numeric interpretations.
     prompt: Define the command line syntax for users to specify input files, codecs,
       and interpretations
+    shims: []
   implementbinarydatareader:
     agent: false
+    code_node_type: stub
     description: Implement a module to read binary data from files
+    implementation: "from pydantic import BaseModel, Field\n\n\nclass ImplementbinarydatareaderOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for implementbinarydatareader node outputs.\"\"\"\n\
+      \    binary_data_reader_function: str = (\n        Field(..., description=\"\
+      Name of the function that reads binary data\")\n    )\n\n\ndef implementbinarydatareader(general_input:\
+      \ str, **kwargs) -> ImplementbinarydatareaderOutput:\n    \"\"\"\n    Implements\
+      \ a function to read binary data from a file and returns the name\n    of this\
+      \ function.\n\n    Parameters\n    ----------\n    file_path : str\n       \
+      \ Path to the file from which to read binary data.\n\n    Returns\n    -------\n\
+      \    str\n        Name of the function that reads binary data from the specified\
+      \ file\n        path.\n\n    Raises\n    ------\n    FileNotFoundError\n   \
+      \     If the file at the specified path does not exist.\n    IOError\n     \
+      \   If there's an issue reading the file.\n\n    Examples\n    --------\n  \
+      \  >>> read_binary_data('example.bin')\n    'read_binary_data'\n\n    >>> read_binary_data('non_existent_file.bin')\n\
+      \    FileNotFoundError: File 'non_existent_file.bin' not found.\n\n    \"\"\"\
+      \n    return ImplementbinarydatareaderOutput(\n        binary_data_reader_function=\"\
+      \",\n    )"
     name: implementbinarydatareader
     nodes_depended_on: []
     nodes_dependent_on: []
@@ -162,9 +247,43 @@ nodes:
         summary: Implements a function to read binary data from a file and returns
           the name of this function.
     prompt: Develop a function to read binary data from a given file path
+    shims: []
   implementcodecapplication:
     agent: false
+    code_node_type: stub
     description: Implement the application of various codecs to binary data
+    implementation: "from pydantic import BaseModel, Field\nfrom typing import List\n\
+      \n\nclass DefinesupportedcodecsOutput(BaseModel):\n    \"\"\"Pydantic model\
+      \ for definesupportedcodecs node outputs.\"\"\"\n    supported_codecs: List[str]\
+      \ = (\n        Field(..., description=\"List of codec names supported by the\
+      \ CLI tool\")\n    )\n\n\nclass ImplementbinarydatareaderOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for implementbinarydatareader node outputs.\"\"\"\n\
+      \    binary_data_reader_function: str = (\n        Field(..., description=\"\
+      Name of the function that reads binary data\")\n    )\n\n\nclass ImplementcodecapplicationOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for implementcodecapplication node outputs.\"\"\"\n\
+      \    codec_application_code: str = (\n        Field(..., description=\"Code\
+      \ snippet showing how codecs are applied\")\n    )\n\n\ndef implementcodecapplication(definesupportedcodecs_input:\
+      \ DefinesupportedcodecsOutput, implementbinarydatareader_input: ImplementbinarydatareaderOutput,\
+      \ **kwargs) -> ImplementcodecapplicationOutput:\n    \"\"\"\n    Generates code\
+      \ to apply supported codecs to binary data.\n\n    Parameters\n    ----------\n\
+      \    supported_codecs : List[str]\n        List of codec names supported by\
+      \ the CLI tool, provided by the\n        'definesupportedcodecs' node.\n   \
+      \ binary_data_reader_function : str\n        Name of the function that reads\
+      \ binary data, provided by the\n        'implementbinarydatareader' node.\n\n\
+      \    Returns\n    -------\n    str\n        Code snippet that demonstrates how\
+      \ to apply the supported codecs to\n        binary data.\n\n    Raises\n   \
+      \ ------\n    ValueError\n        If the list of supported codecs is empty or\
+      \ if the binary data\n        reader function name is invalid.\n\n    Examples\n\
+      \    --------\n    >>> def apply_codecs(supported_codecs, binary_data_reader_function):\n\
+      \    ...     # Example implementation\n    ...     code_snippet = ''\n    ...\
+      \     for codec in supported_codecs:\n    ...         code_snippet += f'data\
+      \ =\n    {binary_data_reader_function}(file_path).decode({codec}) '\n    ...\
+      \     return code_snippet\n    >>> supported_codecs = ['utf-8', 'ascii']\n \
+      \   >>> binary_data_reader_function = 'read_binary_data'\n    >>> print(apply_codecs(supported_codecs,\
+      \ binary_data_reader_function))\n    data = read_binary_data(file_path).decode('utf-8')\n\
+      \    data = read_binary_data(file_path).decode('ascii')\n\n    \"\"\"\n    return\
+      \ ImplementcodecapplicationOutput(\n        codec_application_code=\"\",\n \
+      \   )"
     name: implementcodecapplication
     nodes_depended_on:
     - definesupportedcodecs
@@ -217,10 +336,44 @@ nodes:
         summary: Generates code to apply supported codecs to binary data.
     prompt: Write code to apply the supported codecs to the binary data read from
       files
+    shims: []
   implementnumericinterpretation:
     agent: false
+    code_node_type: stub
     description: Implement the interpretation of binary data as different numeric
       types
+    implementation: "from pydantic import BaseModel, Field\nfrom typing import List\n\
+      \n\nimport numpy as np\n\n\nclass DefinenumericinterpretationsOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for definenumericinterpretations node outputs.\"\"\
+      \"\n    numeric_interpretations: List[str] = (\n        Field(..., description=\"\
+      List of numeric interpretations supported\")\n    )\n\n\nclass ImplementbinarydatareaderOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for implementbinarydatareader node outputs.\"\"\"\n\
+      \    binary_data_reader_function: str = (\n        Field(..., description=\"\
+      Name of the function that reads binary data\")\n    )\n\n\nclass ImplementnumericinterpretationOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for implementnumericinterpretation node outputs.\"\
+      \"\"\n    numeric_interpretation_code: str = (\n        Field(..., description=\"\
+      Code snippet for numeric interpretation\")\n    )\n\n\ndef implementnumericinterpretation(definenumericinterpretations_input:\
+      \ DefinenumericinterpretationsOutput, implementbinarydatareader_input: ImplementbinarydatareaderOutput,\
+      \ **kwargs) -> ImplementnumericinterpretationOutput:\n    \"\"\"\n    Generates\
+      \ code for interpreting binary data as different numeric types.\n\n    Parameters\n\
+      \    ----------\n    numeric_interpretations : List[str]\n        List of numeric\
+      \ interpretations supported, provided by\n        'definenumericinterpretations'.\n\
+      \    binary_data_reader_function : str\n        Name of the function that reads\
+      \ binary data, provided by\n        'implementbinarydatareader'.\n\n    Returns\n\
+      \    -------\n    str\n        Code snippet that interprets binary data as the\
+      \ defined numeric\n        types.\n\n    Raises\n    ------\n    ValueError\n\
+      \        If numeric_interpretations is empty or binary_data_reader_function\n\
+      \        is not a valid function name.\n\n    Examples\n    --------\n    >>>\
+      \ numeric_interpretations = ['int8', 'uint16', 'float32']\n    >>> binary_data_reader_function\
+      \ = 'read_binary_data'\n    >>> interpret_binary_data(numeric_interpretations,\n\
+      \    binary_data_reader_function)\n    \"\"\"\n    def interpret_binary_data(data,\
+      \ interpretation):\n        if interpretation == 'int8':\n            return\
+      \ np.frombuffer(data, dtype=np.int8)\n        elif interpretation == 'uint16':\n\
+      \            return np.frombuffer(data, dtype=np.uint16)\n        elif interpretation\
+      \ == 'float32':\n            return np.frombuffer(data, dtype=np.float32)\n\
+      \        else:\n            raise ValueError('Unsupported interpretation')\n\
+      \    \"\"\"\n\n    \"\"\"\n    return ImplementnumericinterpretationOutput(\n\
+      \        numeric_interpretation_code=\"\",\n    )"
     name: implementnumericinterpretation
     nodes_depended_on:
     - definenumericinterpretations
@@ -264,9 +417,52 @@ nodes:
         summary: Generates code for interpreting binary data as different numeric
           types.
     prompt: Develop code to interpret binary data as the defined numeric types
+    shims: []
   integratecliwithparsinglogic:
     agent: false
+    code_node_type: stub
     description: Integrate the CLI syntax with the binary data parsing logic
+    implementation: "from pydantic import BaseModel, Field\n\n\nclass DesigncommandlineinterfaceOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for designcommandlineinterface node outputs.\"\"\"\
+      \n    cli_syntax: str = Field(..., description=\"Command line syntax description\"\
+      )\n    cli_options: str = Field(..., description=\"List of CLI options available\"\
+      )\n\n\nclass ImplementcodecapplicationOutput(BaseModel):\n    \"\"\"Pydantic\
+      \ model for implementcodecapplication node outputs.\"\"\"\n    codec_application_code:\
+      \ str = (\n        Field(..., description=\"Code snippet showing how codecs\
+      \ are applied\")\n    )\n\n\nclass ImplementnumericinterpretationOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for implementnumericinterpretation node outputs.\"\
+      \"\"\n    numeric_interpretation_code: str = (\n        Field(..., description=\"\
+      Code snippet for numeric interpretation\")\n    )\n\n\nclass IntegratecliwithparsinglogicOutput(BaseModel):\n\
+      \    \"\"\"Pydantic model for integratecliwithparsinglogic node outputs.\"\"\
+      \"\n    integrated_cli_tool: str = (\n        Field(..., description=\"Description\
+      \ of the fully integrated CLI tool\")\n    )\n\n\ndef integratecliwithparsinglogic(designcommandlineinterface_input:\
+      \ DesigncommandlineinterfaceOutput, implementcodecapplication_input: ImplementcodecapplicationOutput,\
+      \ implementnumericinterpretation_input: ImplementnumericinterpretationOutput,\
+      \ **kwargs) -> IntegratecliwithparsinglogicOutput:\n    \"\"\"\n    Integrates\
+      \ CLI syntax with binary data parsing logic to create a functional\n    CLI\
+      \ tool.\n\n    Parameters\n    ----------\n    cli_syntax : str\n        Command\
+      \ line syntax description from the designcommandlineinterface\n        node.\n\
+      \    codec_application_code : str\n        Code snippet showing how codecs are\
+      \ applied from the\n        implementcodecapplication node.\n    numeric_interpretation_code\
+      \ : str\n        Code snippet for numeric interpretation from the\n        implementnumericinterpretation\
+      \ node.\n\n    Returns\n    -------\n    str\n        Description of the fully\
+      \ integrated CLI tool, including how it\n        processes binary data with\
+      \ various codecs and numeric\n        interpretations.\n\n    Raises\n    ------\n\
+      \    ValueError\n        If the cli_syntax, codec_application_code, or\n   \
+      \     numeric_interpretation_code is invalid or incompatible.\n    NotImplementedError\n\
+      \        If the integration of CLI syntax with parsing logic is not properly\n\
+      \        implemented.\n\n    Examples\n    --------\n    >>> integrate_cli_with_parsing_logic(cli_syntax='binary_parser\
+      \ --codec\n    base64 --interpret float32 input.bin',\n    ...\n    codec_application_code='apply_codec(data,\
+      \ codec)',\n    ...\n    numeric_interpretation_code='interpret_numeric(data,\
+      \ interpretation)')\n    Fully integrated CLI tool description: 'binary_parser\
+      \ --codec <codec>\n    --interpret <interpretation> <input_file>'\n\n    >>>\
+      \ integrate_cli_with_parsing_logic(cli_syntax='binary_parser --codec hex\n \
+      \   --interpret int16 input.bin',\n    ...\n    codec_application_code='apply_codec(data,\
+      \ codec)',\n    ...\n    numeric_interpretation_code='interpret_numeric(data,\
+      \ interpretation)')\n    Fully integrated CLI tool description: 'binary_parser\
+      \ --codec <codec>\n    --interpret <interpretation> <input_file>'\n\n    \"\"\
+      \"\n    return IntegratecliwithparsinglogicOutput(\n        integrated_cli_tool=\"\
+      \",\n    )"
     name: integratecliwithparsinglogic
     nodes_depended_on:
     - designcommandlineinterface
@@ -329,9 +525,39 @@ nodes:
           functional CLI tool.
     prompt: Combine the CLI interface with the parsing logic to create a functional
       CLI tool
+    shims: []
   testclitool:
     agent: false
+    code_node_type: stub
     description: Test the CLI tool with various binary data files and parsing options
+    implementation: "from pydantic import BaseModel, Field\nfrom typing import List\n\
+      \n\nclass IntegratecliwithparsinglogicOutput(BaseModel):\n    \"\"\"Pydantic\
+      \ model for integratecliwithparsinglogic node outputs.\"\"\"\n    integrated_cli_tool:\
+      \ str = (\n        Field(..., description=\"Description of the fully integrated\
+      \ CLI tool\")\n    )\n\n\nclass TestclitoolOutput(BaseModel):\n    \"\"\"Pydantic\
+      \ model for testclitool node outputs.\"\"\"\n    test_cases: List[str] = (\n\
+      \        Field(..., description=\"List of test cases designed for the CLI tool\"\
+      )\n    )\n    test_results: List[bool] = (\n        Field(..., description=\"\
+      Results of the test cases (true for pass, false for fail)\")\n    )\n\n\ndef\
+      \ testclitool(integratecliwithparsinglogic_input: IntegratecliwithparsinglogicOutput,\
+      \ **kwargs) -> TestclitoolOutput:\n    \"\"\"\n    Generates and executes test\
+      \ cases for the CLI tool.\n\n    Parameters\n    ----------\n    integrated_cli_tool\
+      \ : str\n        Description of the fully integrated CLI tool from the parent\
+      \ node\n        'integratecliwithparsinglogic'.\n\n    Returns\n    -------\n\
+      \    Tuple[List[str], List[bool]]\n        A tuple containing a list of test\
+      \ cases and their corresponding\n        results.\n\n    Raises\n    ------\n\
+      \    ValueError\n        If the integrated CLI tool description is invalid or\
+      \ empty.\n    RuntimeError\n        If test case execution fails due to unforeseen\
+      \ errors.\n\n    Examples\n    --------\n    >>> test_clitool('CLI tool description')\n\
+      \    >>> >>> test_cases, test_results = test_clitool('CLI tool description')\n\
+      \    >>> >>> print(test_cases)\n    >>> ['test_case_1', 'test_case_2']\n   \
+      \ >>> >>> print(test_results)\n    >>> [True, False]\n    (['test_case_1', 'test_case_2'],\
+      \ [True, False])\n\n    >>> test_clitool('Invalid CLI tool description')\n \
+      \   >>> >>> try:\n    >>> ...     test_clitool('Invalid CLI tool description')\n\
+      \    >>> ... except ValueError as e:\n    >>> ...     print(e)\n    >>> Invalid\
+      \ CLI tool description provided.\n    Invalid CLI tool description provided.\n\
+      \n    \"\"\"\n    return TestclitoolOutput(\n        test_cases=[],\n      \
+      \  test_results=[],\n    )"
     name: testclitool
     nodes_depended_on:
     - integratecliwithparsinglogic
@@ -382,3 +608,4 @@ nodes:
         summary: Generates and executes test cases for the CLI tool.
     prompt: Create test cases for the CLI tool using different inputs and parsing
       options
+    shims: []
