@@ -1,333 +1,142 @@
 dag_type: plain_text
-description: Workflow that defines supported codecs and numeric types, designs a CLI,
-  documents the tool, implements parsing logic, writes tests, and finalizes a distributable
-  package, with each original task split into two concurrent sub‑tasks whose outputs
-  are combined before downstream usage.
+description: Workflow to design and build components of a binary data parser with
+  detailed technical prompts for each step.
 name: build_binary_data_parser_with_parallel_parts
 nodes:
   define_supported_codecs_combined:
     agent: false
-    description: Merge the two partial codec lists into a single final list.
+    description: Merge the two partial codec lists into a single final list with complete
+      detailed descriptions.
     name: define_supported_codecs_combined
     nodes_depended_on:
     - define_supported_codecs_part1
     - define_supported_codecs_part2
-    nodes_dependent_on: []
+    nodes_dependent_on:
+    - design_command_line_interface_part1
+    - design_command_line_interface_part2
+    - implement_codec_parsing_logic_part1
+    - implement_codec_parsing_logic_part2
     prompt: Combine the outputs from Part 1 and Part 2 to produce the final list of
-      supported codecs. Merge the two JSON arrays, removing any duplicate codec entries.
+      supported codecs. Merge the two JSON arrays, ensuring all entries have detailed
+      descriptions and properly resolving any duplicate codec identifiers or overlapping
+      entries.
   define_supported_codecs_part1:
     agent: false
-    description: Generate first part of supported codecs list.
+    description: Generate first part of the supported codecs list with detailed descriptions.
     name: define_supported_codecs_part1
     nodes_depended_on: []
-    nodes_dependent_on: []
+    nodes_dependent_on:
+    - define_supported_codecs_combined
     prompt: 'Part 1: Provide a comma‑separated list of codec identifiers that the
-      binary parser should handle, including common text encodings such as ASCII,
+      binary parser should handle. These include common text encodings such as ASCII,
       ISO‑8859‑1, UTF‑8, UTF‑16 (little endian, big endian), and binary representations
-      such as Base64. For each codec, specify its name and a short description of
-      its characteristics. Return the list as a JSON array of objects with fields
-      "codec" and "description".'
+      such as Base64. For each codec, provide a technical description including its
+      name, purpose, and primary use cases. Specify any associated encoding characteristics
+      or limitations (e.g., byte order or special character handling). Return the
+      list as a JSON array of objects with fields "codec", "description", and if applicable,
+      "limitations".'
   define_supported_codecs_part2:
     agent: false
-    description: Generate second part of supported codecs list.
+    description: Generate the second part of the supported codecs list with detailed
+      technical details.
     name: define_supported_codecs_part2
     nodes_depended_on: []
-    nodes_dependent_on: []
+    nodes_dependent_on:
+    - define_supported_codecs_combined
     prompt: 'Part 2: Provide a comma‑separated list of codec identifiers that the
-      binary parser should handle, including common text encodings such as ASCII,
-      ISO‑8859‑1, UTF‑8, UTF‑16 (little endian, big endian), and binary representations
-      such as Base64. For each codec, specify its name and a short description of
-      its characteristics. Return the list as a JSON array of objects with fields
-      "codec" and "description".'
+      binary parser should handle. These include additional text encodings and binary
+      representations commonly used. For each codec, provide a technical description
+      including its name, purpose, primary use cases, and encoding characteristics.
+      If applicable, identify any specific limitations or edge cases. Return the list
+      as a JSON array of objects with fields "codec", "description", and "limitations".'
   define_supported_numeric_types_combined:
     agent: false
-    description: Merge the two partial numeric type lists into a single final list.
+    description: Merge the two partial numeric types lists into a complete final list
+      with detailed technical descriptions.
     name: define_supported_numeric_types_combined
     nodes_depended_on:
     - define_supported_numeric_types_part1
     - define_supported_numeric_types_part2
-    nodes_dependent_on: []
-    prompt: Combine the outputs from Part 1 and Part 2 to produce the final list of
-      supported numeric types. Merge the two JSON arrays, removing any duplicate type
-      entries.
+    nodes_dependent_on:
+    - design_command_line_interface_part1
+    - design_command_line_interface_part2
+    - implement_numeric_parsing_logic_part1
+    - implement_numeric_parsing_logic_part2
+    prompt: Combine the outputs from Part 1 and Part 2 to produce a complete numeric
+      types list. Merge numeric type entries, ensuring all descriptions and storage
+      details are consistent and resolving any duplication.
   define_supported_numeric_types_part1:
     agent: false
-    description: Generate first part of supported numeric types list.
+    description: Generate first part of the numeric types list with detailed specifications.
     name: define_supported_numeric_types_part1
     nodes_depended_on: []
-    nodes_dependent_on: []
-    prompt: 'Part 1: List the numeric data types that the parser must support, covering
-      signed and unsigned integers of 8, 16, 32, and 64 bits, as well as single and
-      double precision floating point. For each type, include its name (e.g., int8,
-      uint16, float32) and specify byte order (little endian, big endian) if applicable.
-      Output as a JSON array with fields "type" and "description".'
+    nodes_dependent_on:
+    - define_supported_numeric_types_combined
+    prompt: 'Part 1: List the numeric data types that the parser must support, such
+      as signed and unsigned integers of 8, 16, 32, and 64 bits, along with single
+      and double-precision floating point types. Provide detailed specifications including
+      type name (e.g., int8, uint16, float32), byte order (little endian or big endian
+      if applicable), and storage size in bytes. Note if there are any specific constraints
+      or representations (e.g., special values like NaN for floats). Output as a JSON
+      array with fields "type", "description", and "storage_description".'
   define_supported_numeric_types_part2:
     agent: false
-    description: Generate second part of supported numeric types list.
+    description: Generate second part of the numeric types list with detailed technical
+      details.
     name: define_supported_numeric_types_part2
     nodes_depended_on: []
-    nodes_dependent_on: []
-    prompt: 'Part 2: List the numeric data types that the parser must support, covering
-      signed and unsigned integers of 8, 16, 32, and 64 bits, as well as single and
-      double precision floating point. For each type, include its name (e.g., int8,
-      uint16, float32) and specify byte order (little endian, big endian) if applicable.
-      Output as a JSON array with fields "type" and "description".'
+    nodes_dependent_on:
+    - define_supported_numeric_types_combined
+    prompt: 'Part 2: Expand the list of numeric types to cover additional precision
+      levels or representations (if any). Include a description for each covering
+      its name, bit storage size, byte order (if applicable), and its typical usage
+      context. Include examples of its values or representation (e.g., the range of
+      integers or encoding for special values for floats). Return structured output
+      as a JSON array with fields "type", "description", "storage_description".'
   design_command_line_interface_combined:
     agent: false
-    description: Merge the two partial CLI designs into a single final specification.
+    description: Merge the two partial CLI interface designs into a complete specification
+      with detailed mappings to earlier components.
     name: design_command_line_interface_combined
     nodes_depended_on:
     - design_command_line_interface_part1
     - design_command_line_interface_part2
-    nodes_dependent_on: []
-    prompt: Combine the outputs from Part 1 and Part 2 to produce the final CLI interface
-      specification. Merge the two JSON objects, ensuring all arguments are included
-      without duplication.
+    nodes_dependent_on:
+    - document_command_line_tool_part1
+    - document_command_line_tool_part2
+    - integrate_parsing_logic_part1
+    - integrate_parsing_logic_part2
+    prompt: Combine the output specifications from Part 1 and Part 2 into a complete
+      CLI design. Merge argument lists, resolve overlaps, and include detailed mappings
+      for dependencies with flags. Ensure examples and descriptions are included for
+      final usage.
   design_command_line_interface_part1:
     agent: false
-    description: Generate first part of CLI interface design.
+    description: Generate the first part of a CLI design with detailed technical argument
+      descriptions.
     name: design_command_line_interface_part1
     nodes_depended_on:
     - define_supported_codecs_combined
     - define_supported_numeric_types_combined
-    nodes_dependent_on: []
+    nodes_dependent_on:
+    - design_command_line_interface_combined
     prompt: 'Part 1: Design a command‑line interface for the binary parser. Include
-      a help flag, an input file argument, optional codec selection (--codec), optional
-      numeric type selection (--type), and flags for verbosity and output format.
-      Provide a concise description of each argument and its expected values, along
-      with short and long forms, default values, and help text. Output the interface
-      specification in JSON format with fields for "name", "description", "arguments"
-      array of objects with "flag", "short", "long", "default", "help", "required",
-      and "type".'
+      options such as a help flag, input file argument, codec selection (--codec),
+      numeric type selection (--type), verbosity, and output format. Provide a JSON
+      specification for the CLI with fields like "arguments" (including technical
+      descriptions for flags, their purpose, and constraints). Ensure accurate mapping
+      of selections (e.g., codec and numeric type) to the parser.'
   design_command_line_interface_part2:
     agent: false
-    description: Generate second part of CLI interface design.
+    description: Generate the second part of CLI design with additional use cases
+      and technical argument details.
     name: design_command_line_interface_part2
     nodes_depended_on:
     - define_supported_codecs_combined
     - define_supported_numeric_types_combined
-    nodes_dependent_on: []
-    prompt: 'Part 2: Design a command‑line interface for the binary parser. Include
-      a help flag, an input file argument, optional codec selection (--codec), optional
-      numeric type selection (--type), and flags for verbosity and output format.
-      Provide a concise description of each argument and its expected values, along
-      with short and long forms, default values, and help text. Output the interface
-      specification in JSON format with fields for "name", "description", "arguments"
-      array of objects with "flag", "short", "long", "default", "help", "required",
-      and "type".'
-  document_command_line_tool_combined:
-    agent: false
-    description: Merge the two partial documentation sections into a single final
-      document.
-    name: document_command_line_tool_combined
-    nodes_depended_on:
-    - document_command_line_tool_part1
-    - document_command_line_tool_part2
-    nodes_dependent_on: []
-    prompt: Combine the outputs from Part 1 and Part 2 to produce the final documentation.
-      Merge the two text sections, removing any duplicate sentences.
-  document_command_line_tool_part1:
-    agent: false
-    description: Generate first part of CLI documentation.
-    name: document_command_line_tool_part1
-    nodes_depended_on:
+    nodes_dependent_on:
     - design_command_line_interface_combined
-    nodes_dependent_on: []
-    prompt: 'Part 1: Write thorough documentation for the CLI tool. Include usage
-      examples with real command lines, a description of each option, and notes on
-      supported codecs and numeric types. Also provide troubleshooting guidance for
-      common errors. Return the documentation as plain text.'
-  document_command_line_tool_part2:
-    agent: false
-    description: Generate second part of CLI documentation.
-    name: document_command_line_tool_part2
-    nodes_depended_on:
-    - design_command_line_interface_combined
-    nodes_dependent_on: []
-    prompt: 'Part 2: Write thorough documentation for the CLI tool. Include usage
-      examples with real command lines, a description of each option, and notes on
-      supported codecs and numeric types. Also provide troubleshooting guidance for
-      common errors. Return the documentation as plain text.'
-  finalize_binary_data_parser_combined:
-    agent: false
-    description: Merge the two partial package archives into a single final archive.
-    name: finalize_binary_data_parser_combined
-    nodes_depended_on:
-    - finalize_binary_data_parser_part1
-    - finalize_binary_data_parser_part2
-    nodes_dependent_on: []
-    prompt: Combine the outputs from Part 1 and Part 2 to produce the final distributable
-      package. Merge the two JSON archive listings, ensuring each file is included
-      only once.
-  finalize_binary_data_parser_part1:
-    agent: false
-    description: Generate first part of final package archive.
-    name: finalize_binary_data_parser_part1
-    nodes_depended_on:
-    - integrate_parsing_logic_combined
-    - write_test_cases_combined
-    - document_command_line_tool_combined
-    nodes_dependent_on: []
-    prompt: 'Part 1: Merge the integrated parser script, test cases, and documentation
-      into a final package. Provide a README with installation instructions, usage
-      guide, and test execution steps. Output the complete archive contents as a JSON
-      with file paths and contents. Ensure all dependencies are listed and that the
-      package can be built and tested by running `python -m unittest`.'
-  finalize_binary_data_parser_part2:
-    agent: false
-    description: Generate second part of final package archive.
-    name: finalize_binary_data_parser_part2
-    nodes_depended_on:
-    - integrate_parsing_logic_combined
-    - write_test_cases_combined
-    - document_command_line_tool_combined
-    nodes_dependent_on: []
-    prompt: 'Part 2: Merge the integrated parser script, test cases, and documentation
-      into a final package. Provide a README with installation instructions, usage
-      guide, and test execution steps. Output the complete archive contents as a JSON
-      with file paths and contents. Ensure all dependencies are listed and that the
-      package can be built and tested by running `python -m unittest`.'
-  implement_codec_parsing_logic_combined:
-    agent: false
-    description: Merge the two partial codec parsing implementations into a single
-      final implementation.
-    name: implement_codec_parsing_logic_combined
-    nodes_depended_on:
-    - implement_codec_parsing_logic_part1
-    - implement_codec_parsing_logic_part2
-    nodes_dependent_on: []
-    prompt: Combine the outputs from Part 1 and Part 2 to produce the final codec
-      parsing implementation. Merge the two sets of code snippets, resolving any duplicate
-      function definitions.
-  implement_codec_parsing_logic_part1:
-    agent: false
-    description: Generate first part of codec parsing implementation.
-    name: implement_codec_parsing_logic_part1
-    nodes_depended_on:
-    - define_supported_codecs_combined
-    nodes_dependent_on: []
-    prompt: 'Part 1: Implement the code that decodes binary input into the specified
-      codecs. For each codec from the definition step, provide a function that takes
-      a byte array and returns the decoded string or appropriate data structure, handling
-      errors and reporting decoding failures. Return the complete implementation as
-      Python code snippets, including necessary imports.'
-  implement_codec_parsing_logic_part2:
-    agent: false
-    description: Generate second part of codec parsing implementation.
-    name: implement_codec_parsing_logic_part2
-    nodes_depended_on:
-    - define_supported_codecs_combined
-    nodes_dependent_on: []
-    prompt: 'Part 2: Implement the code that decodes binary input into the specified
-      codecs. For each codec from the definition step, provide a function that takes
-      a byte array and returns the decoded string or appropriate data structure, handling
-      errors and reporting decoding failures. Return the complete implementation as
-      Python code snippets, including necessary imports.'
-  implement_numeric_parsing_logic_combined:
-    agent: false
-    description: Merge the two partial numeric parsing implementations into a single
-      final implementation.
-    name: implement_numeric_parsing_logic_combined
-    nodes_depended_on:
-    - implement_numeric_parsing_logic_part1
-    - implement_numeric_parsing_logic_part2
-    nodes_dependent_on: []
-    prompt: Combine the outputs from Part 1 and Part 2 to produce the final numeric
-      parsing implementation. Merge the two sets of code snippets, resolving any duplicate
-      function definitions.
-  implement_numeric_parsing_logic_part1:
-    agent: false
-    description: Generate first part of numeric parsing implementation.
-    name: implement_numeric_parsing_logic_part1
-    nodes_depended_on:
-    - define_supported_numeric_types_combined
-    nodes_dependent_on: []
-    prompt: 'Part 1: Implement code to parse numeric values from binary data for each
-      numeric type defined earlier. Provide functions that read a sequence of bytes
-      and return the numeric value, handling endianness. Output the implementation
-      as Python code snippets with imports.'
-  implement_numeric_parsing_logic_part2:
-    agent: false
-    description: Generate second part of numeric parsing implementation.
-    name: implement_numeric_parsing_logic_part2
-    nodes_depended_on:
-    - define_supported_numeric_types_combined
-    nodes_dependent_on: []
-    prompt: 'Part 2: Implement code to parse numeric values from binary data for each
-      numeric type defined earlier. Provide functions that read a sequence of bytes
-      and return the numeric value, handling endianness. Output the implementation
-      as Python code snippets with imports.'
-  integrate_parsing_logic_combined:
-    agent: false
-    description: Merge the two partial integrated parsing scripts into a single final
-      script.
-    name: integrate_parsing_logic_combined
-    nodes_depended_on:
-    - integrate_parsing_logic_part1
-    - integrate_parsing_logic_part2
-    nodes_dependent_on: []
-    prompt: Combine the outputs from Part 1 and Part 2 to produce the final integrated
-      parsing logic. Merge the two Python scripts, ensuring all functions and argument
-      parsing are included once.
-  integrate_parsing_logic_part1:
-    agent: false
-    description: Generate first part of integrated parsing logic.
-    name: integrate_parsing_logic_part1
-    nodes_depended_on:
-    - implement_codec_parsing_logic_combined
-    - implement_numeric_parsing_logic_combined
-    - design_command_line_interface_combined
-    nodes_dependent_on: []
-    prompt: 'Part 1: Combine the codec and numeric parsing functions into a single
-      CLI program that accepts an input file, codec, and numeric type arguments. Show
-      how the selected codec and numeric type are applied to read and interpret the
-      binary file, and how results are displayed to the user. Provide a full Python
-      script with argument parsing, calling parsing functions, and formatting output.
-      Include comments.'
-  integrate_parsing_logic_part2:
-    agent: false
-    description: Generate second part of integrated parsing logic.
-    name: integrate_parsing_logic_part2
-    nodes_depended_on:
-    - implement_codec_parsing_logic_combined
-    - implement_numeric_parsing_logic_combined
-    - design_command_line_interface_combined
-    nodes_dependent_on: []
-    prompt: 'Part 2: Combine the codec and numeric parsing functions into a single
-      CLI program that accepts an input file, codec, and numeric type arguments. Show
-      how the selected codec and numeric type are applied to read and interpret the
-      binary file, and how results are displayed to the user. Provide a full Python
-      script with argument parsing, calling parsing functions, and formatting output.
-      Include comments.'
-  write_test_cases_combined:
-    agent: false
-    description: Merge the two partial test case lists into a single final list.
-    name: write_test_cases_combined
-    nodes_depended_on:
-    - write_test_cases_part1
-    - write_test_cases_part2
-    nodes_dependent_on: []
-    prompt: Combine the outputs from Part 1 and Part 2 to produce the final set of
-      test cases. Merge the two JSON arrays, removing duplicate test definitions.
-  write_test_cases_part1:
-    agent: false
-    description: Generate first part of test cases.
-    name: write_test_cases_part1
-    nodes_depended_on:
-    - integrate_parsing_logic_combined
-    nodes_dependent_on: []
-    prompt: 'Part 1: Write comprehensive test cases covering all codecs and numeric
-      types. For each case, specify test name, input bytes (hex), expected decoded
-      output, and expected error handling. Provide these in a JSON array with ''test_name'',
-      ''input_bytes'', ''expected_output'', and ''expected_error''.'
-  write_test_cases_part2:
-    agent: false
-    description: Generate second part of test cases.
-    name: write_test_cases_part2
-    nodes_depended_on:
-    - integrate_parsing_logic_combined
-    nodes_dependent_on: []
-    prompt: 'Part 2: Write comprehensive test cases covering all codecs and numeric
-      types. For each case, specify test name, input bytes (hex), expected decoded
-      output, and expected error handling. Provide these in a JSON array with ''test_name'',
-      ''input_bytes'', ''expected_output'', and ''expected_error''.'
+    prompt: 'Part 2: Expand on the CLI design by refining usage details and including
+      examples for flags. Capture additional arguments or constraints based on prior
+      codec and numeric type dependencies. Return the expanded JSON specification,
+      ensuring alignment with parsing capabilities identified in earlier steps.'
