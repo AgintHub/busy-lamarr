@@ -14,12 +14,17 @@ nodes:
     - define_supported_codecs_part2
     nodes_dependent_on: []
     output_structure:
-    - description: List of unique codec identifiers in alphabetical order.
-      key: codec_identifiers
+    - description: Alphabetically sorted list of unique codec identifiers.
+      key: canonical_codec_identifiers
       type: List[str]
-    - description: List of concise one-line descriptions aligned with the codec identifiers.
-      key: codec_descriptions
+    - description: List of concise descriptions corresponding to each codec in the
+        canonical_codec_identifiers list.
+      key: canonical_codec_descriptions
       type: List[str]
+    - description: Error message if validation of the input JSON fails, or an empty
+        string if no errors.
+      key: validation_errors
+      type: str
     prompt: 'Merge the two JSON arrays emitted by *define_supported_codecs_part1*
       and *define_supported_codecs_part2* into a single, canonical list of codecs.
       Each array element is an object with the fields `codec` (string) and `description`
@@ -58,14 +63,12 @@ nodes:
     nodes_depended_on: []
     nodes_dependent_on: []
     output_structure:
-    - description: An ordered list of codec identifiers. The nth element corresponds
-        to the codec in the same position in `description_list`.
-      key: codec_list
+    - description: Ordered list of codec identifiers as specified in the output array.
+      key: codecs
       type: List[str]
-    - description: An ordered list of concise technical summaries for each codec.
-        Each summary includes reference standard, BOM or byte‑range information, common
-        file extensions or MIME type, and parsing nuances.
-      key: description_list
+    - description: Ordered list of textual descriptions corresponding to each codec;
+        the nth entry aligns with the nth codec.
+      key: descriptions
       type: List[str]
     prompt: "Part 1: Generate the first segment of the supported codecs list for the\
       \ binary parser.  Include the following encodings:\n\n* **ASCII** – 7‑bit, no\
@@ -90,7 +93,7 @@ nodes:
     agent: false
     description: Generate the second segment of the binary parser’s codec catalog,
       detailing additional text and binary encodings. Provide a JSON array of codec
-      objects—each with a unique identifier, a brief yet technically rich description
+      objects—each with a unique identifier, a concise yet technically rich description
       (covering BOM handling, endianness, common use‑cases), and any relevant MIME
       or flag metadata. The output must be alphabetically sorted and syntactically
       valid so it can be seamlessly merged with the first segment by downstream nodes.
@@ -98,21 +101,10 @@ nodes:
     nodes_depended_on: []
     nodes_dependent_on: []
     output_structure:
-    - description: Ordered list of unique codec identifiers (e.g., "utf-8").
-      key: codec_identifiers
-      type: List[str]
-    - description: Ordered list of concise descriptions (max 30 words) corresponding
-        to each codec identifier.
-      key: descriptions
-      type: List[str]
-    - description: Ordered list of MIME type strings or empty string if not applicable
-        for each codec.
-      key: mime_types
-      type: List[str]
-    - description: Ordered list indicating whether each codec typically uses a BOM
-        (true) or not (false).
-      key: bom_flags
-      type: List[bool]
+    - description: JSON array of codec objects as defined by this node. Each object
+        includes fields `codec`, `description`, and optionally `mime` and `bom`.
+      key: codec_catalog_json
+      type: str
     prompt: "You are tasked with completing the second segment of the binary parser’s\
       \ codec registry.\n\n1. Enumerate **additional text and binary encodings** that\
       \ the parser must support, building on the first part of the list. Include at\
@@ -141,13 +133,12 @@ nodes:
     - define_supported_numeric_types_part2
     nodes_dependent_on: []
     output_structure:
-    - description: List of numeric type identifiers sorted alphabetically (e.g., "int8",
-        "uint16", ...).
-      key: type_list
+    - description: List of numeric type identifiers in canonical alphabetical order
+      key: type_names
       type: List[str]
-    - description: Corresponding list of concise descriptions for each numeric type,
-        aligned by index with the type_list.
-      key: description_list
+    - description: Corresponding list of descriptions for each numeric type, aligned
+        with type_names
+      key: type_descriptions
       type: List[str]
     prompt: "Merge the two JSON arrays supplied by the parent nodes \"define_supported_numeric_types_part1\"\
       \ and \"define_supported_numeric_types_part2\". Remove any duplicate entries\
@@ -172,33 +163,39 @@ nodes:
     nodes_depended_on: []
     nodes_dependent_on: []
     output_structure:
-    - description: Ordered list of type identifiers (e.g., "int8", "uint16", "float32").
-      key: types
-      type: List[str]
-    - description: Ordered list of concise technical descriptions matching each type.
-      key: descriptions
-      type: List[str]
-    - description: Ordered list of byte order values ('little' or 'big'). Empty strings
-        indicate the type is endianness‑agnostic.
-      key: byte_orders
-      type: List[str]
-    - description: Ordered list of floating‑point precision labels ('single', 'double').
-        Empty strings for non‑floating types.
-      key: precisions
-      type: List[str]
-    prompt: "Generate Part 1 of the parser’s supported numeric type catalog. For each\
-      \ scalar type, provide:\n\n- **type**: canonical name (e.g., int8, uint16, float32,\
-      \ float64).\n- **description**: a concise technical note covering sign convention,\
-      \ encoding (two’s‑complement for integers, IEEE 754 for floating point), and\
-      \ typical use case.\n- **byte_order**: \"little\" or \"big\" endianness when\
-      \ applicable; omit for types where endianness is irrelevant.\n- **precision**\
-      \ (optional, only for floating‑point types): \"single\" for float32, \"double\"\
-      \ for float64.\n\nThe output must be a valid JSON array of objects, each with\
-      \ the keys above. This JSON should be immediately ingestible by downstream validation\
-      \ modules.\n\nExample output:\n```json\n[{\n  \"type\": \"int8\",\n  \"description\"\
-      : \"Signed 8‑bit integer, two’s complement, range –128 to 127.\",\n  \"byte_order\"\
-      : \"little\"\n},\n{\n  \"type\": \"float32\",\n  \"description\": \"IEEE 754\
-      \ single‑precision floating point.\",\n  \"precision\": \"single\"\n}]\n```"
+    - description: Canonical name of the numeric type, e.g., int8
+      key: type_name
+      type: str
+    - description: Technical description covering sign convention, encoding, and typical
+        use case.
+      key: description
+      type: str
+    - description: Endianness for the type; empty string if the type is endianness‑agnostic.
+      key: byte_order
+      type: str
+    - description: Floating‑point precision ('single' or 'double'); empty string for
+        non‑floating types.
+      key: precision
+      type: str
+    prompt: 'Generate Part 1 of the parser’s supported numeric type catalog. For each
+      scalar type, provide:
+
+
+      - **type**: canonical name (e.g., int8, uint16, float32, float64).
+
+      - **description**: a concise technical note covering sign convention, encoding
+      (two’s‑complement for integers, IEEE 754 for floating point), and typical use
+      case.
+
+      - **byte_order**: "little" or "big" endianness when applicable; omit for types
+      where endianness is irrelevant.
+
+      - **precision** (optional, only for floating‑point types): "single" for float32,
+      "double" for float64.
+
+
+      The output must be a valid JSON array of objects, each with the keys above.
+      This JSON should be immediately ingestible by downstream validation modules.'
   define_supported_numeric_types_part2:
     agent: false
     description: Produces the second segment of the parser’s numeric type specification.
@@ -210,10 +207,13 @@ nodes:
     nodes_depended_on: []
     nodes_dependent_on: []
     output_structure:
-    - description: A list of JSON‑serialized numeric type objects, each containing
-        'type' and 'description' fields.
-      key: numeric_type_objects
-      type: List[str]
+    - description: The numeric type identifier (e.g., "int16", "uint32", "float64").
+      key: type
+      type: str
+    - description: A human‑readable description indicating signedness, bit width,
+        and endian-ness.
+      key: description
+      type: str
     prompt: "Generate Part 2 of the numeric type catalog for the parser. Enumerate\
       \ the numeric data types that remain to be specified, namely:\n\n1. Signed integers:\
       \ int8, int16, int32, int64\n2. Unsigned integers: uint8, uint16, uint32, uint64\n\
@@ -242,40 +242,14 @@ nodes:
     - design_command_line_interface_part2
     nodes_dependent_on: []
     output_structure:
-    - description: The merged command line interface name.
-      key: cli_name
+    - description: The fully merged command‑line interface specification in JSON format.
+      key: final_spec
       type: str
-    - description: The merged command line interface description.
-      key: cli_description
-      type: str
-    - description: List of all argument flags in the final specification.
-      key: arguments_flag
+    - description: A list of validation error messages; empty if no errors.
+      key: errors
       type: List[str]
-    - description: List of short flag identifiers (or null strings if absent).
-      key: arguments_short
-      type: List[str]
-    - description: List of long flag identifiers.
-      key: arguments_long
-      type: List[str]
-    - description: String representation of each argument's default value (use "null"
-        for no default).
-      key: arguments_default
-      type: List[str]
-    - description: Data type declared for each argument (e.g., string, integer, boolean,
-        enum).
-      key: arguments_type
-      type: List[str]
-    - description: Whether each argument is required.
-      key: arguments_required
-      type: List[bool]
-    - description: Help text for each argument.
-      key: arguments_help
-      type: List[str]
-    - description: Human‑readable descriptions of any overridden arguments.
-      key: conflict_entries
-      type: List[str]
-    - description: Any validation error messages encountered during merge.
-      key: error_entries
+    - description: A list of human‑readable descriptions of any overridden arguments.
+      key: conflicts
       type: List[str]
     prompt: "Merge the JSON specifications generated by `design_command_line_interface_part1`\
       \ and `design_command_line_interface_part2` into a single, fully‑consolidated\
@@ -300,9 +274,7 @@ nodes:
       6. **Conflict Log** – Append a `conflicts` array summarizing any overridden\
       \ arguments, listing the original and final values.\n\nReturn the complete specification\
       \ in JSON. If any validation errors arise, output an `errors` array describing\
-      \ the issue(s) and abort the merge.\n\n*Example of a resolved conflict entry\
-      \ in the `conflicts` array:* \n```json\n{\"flag\":\"-v\",\"original\":{...},\"\
-      resolved\":{...}}\n```"
+      \ the issue(s) and abort the merge.\n"
   design_command_line_interface_part1:
     agent: false
     description: Produces the first‑stage blueprint for the binary parser’s command‑line
@@ -317,8 +289,8 @@ nodes:
     - define_supported_numeric_types_combined
     nodes_dependent_on: []
     output_structure:
-    - description: JSON string containing the complete command‑line interface specification,
-        including name, description, and an array of argument objects.
+    - description: Complete JSON specification of the command‑line interface, including
+        name, description, and argument definitions.
       key: cli_spec
       type: str
     prompt: 'Craft a concise yet comprehensive JSON specification for a command‑line
@@ -364,37 +336,15 @@ nodes:
     - define_supported_numeric_types_combined
     nodes_dependent_on: []
     output_structure:
-    - description: The name of the CLI tool.
-      key: cli_name
+    - description: CLI tool name
+      key: name
       type: str
-    - description: The short description of the CLI.
-      key: cli_description
+    - description: CLI tool description
+      key: description
       type: str
-    - description: Number of argument objects in the CLI.
-      key: argument_count
-      type: int
-    - description: List of combined flag strings (e.g., "-h, --help").
-      key: argument_flags
-      type: List[str]
-    - description: List of short form flags or empty string if none.
-      key: argument_short
-      type: List[str]
-    - description: List of long form flags or empty string if none.
-      key: argument_long
-      type: List[str]
-    - description: Boolean list indicating if each argument is required.
-      key: argument_required
-      type: List[bool]
-    - description: String representation of default values; empty string represents
-        null.
-      key: argument_default
-      type: List[str]
-    - description: List of argument types (e.g., "boolean", "string", "enum").
-      key: argument_type
-      type: List[str]
-    - description: List of help text strings for each argument.
-      key: argument_help
-      type: List[str]
+    - description: JSON string representing the list of arguments
+      key: arguments_json
+      type: str
     prompt: "Generate the second part of the command‑line interface (CLI) design for\
       \ the binary parser binary. The specification must:\n\n1. **Include** a comprehensive\
       \ help flag (`-h`/`--help`) that displays usage, argument descriptions, and\
@@ -453,11 +403,23 @@ nodes:
     - document_command_line_tool_part2
     nodes_dependent_on: []
     output_structure:
-    - description: The full, combined Markdown documentation for the CLI tool, containing
-        a consolidated table of contents, detailed usage examples, option explanations,
-        troubleshooting guides, and metadata headers.
-      key: merged_documentation
+    - description: The complete Markdown document with consolidated CLI documentation,
+        including metadata, table of contents, usage examples, options, and troubleshooting
+        sections.
+      key: markdown_content
       type: str
+    - description: List of metadata headers included in the documentation, such as
+        version, build date, author, and license.
+      key: metadata_headers
+      type: List[str]
+    - description: List of section titles corresponding to the table of contents included
+        in the documentation.
+      key: section_titles
+      type: List[str]
+    - description: List of resolved conflicts between Part 1 and Part 2, detailing
+        which part's content was selected or merged.
+      key: conflict_resolutions
+      type: List[str]
     prompt: 'Merge the outputs from Part 1 and Part 2 into a single, cohesive CLI
       documentation file.
 
@@ -495,49 +457,45 @@ nodes:
     - design_command_line_interface_combined
     nodes_dependent_on: []
     output_structure:
-    - description: A concise description of the tool's functionality and target user
-        base.
-      key: tool_purpose
+    - description: Full markdown documentation string produced by the node.
+      key: documentation_text
       type: str
-    - description: The canonical command-line pattern including positional arguments
-        and optional flags.
-      key: overall_syntax
-      type: str
-    - description: A list of options in a table format with columns for Option, Short
-        form, Default, Type, Description, and Allowed values.
-      key: detailed_option_list
-      type: List[str]
-    - description: At least three annotated example command lines illustrating common
-        workflows.
-      key: example_commands
-      type: List[str]
-    - description: Common error messages and actionable troubleshooting steps, including
-        exit codes and hints for diagnosing failures.
-      key: error_handling_notes
-      type: List[str]
-    - description: Special considerations such as case sensitivity, platform differences,
-        and dependency requirements.
-      key: special_notes
-      type: List[str]
-    prompt: "Part 1: Create an exhaustive, professional‑grade documentation section\
-      \ for the command‑line tool.\n\n*Structure:*  Use clear Markdown‑style headings\
-      \ (e.g., `## Overview`, `### Usage`, `#### Options`), tables for options/arguments,\
-      \ and bullet lists for notes.  Include at least three realistic example invocations\
-      \ that cover typical use‑cases.\n\n*Contents to cover:*  \n1. **Tool purpose\
-      \ & scope** – a concise description of the tool’s functionality and target user\
-      \ base.\n2. **Overall syntax** – the canonical command line pattern, including\
-      \ positional arguments and optional flags.\n3. **Detailed option list** – a\
-      \ table with columns: *Option*, *Short form*, *Default*, *Type*, *Description*,\
-      \ *Allowed values*.  Mention supported codecs (e.g., `mp3`, `aac`, `flac`) and\
-      \ numeric types (integers, floats, ranges) where relevant.\n4. **Examples**\
-      \ – at least three annotated command lines illustrating common workflows (e.g.,\
-      \ converting a file, processing a batch, applying a filter).\n5. **Error handling**\
-      \ – common error messages and actionable troubleshooting steps, including exit\
-      \ codes and hints for diagnosing failures.\n6. **Notes** – special considerations\
-      \ (e.g., case sensitivity, platform differences, dependency requirements).\n\
-      \n*Output format:*  Return the documentation as plain text with proper line\
-      \ breaks and indentation.  The output must be a single string that can be directly\
-      \ inserted into a README or manual page.\n\n*No other data should be returned.*"
+    prompt: 'Part 1: Create an exhaustive, professional‑grade documentation section
+      for the command‑line tool.
+
+
+      *Structure:*  Use clear Markdown‑style headings (e.g., `## Overview`, `### Usage`,
+      `#### Options`), tables for options/arguments, and bullet lists for notes.  Include
+      at least three realistic example invocations that cover typical use‑cases.
+
+
+      *Contents to cover:* 1. **Tool purpose & scope** – a concise description of
+      the tool’s functionality and target user base.
+
+      2. **Overall syntax** – the canonical command line pattern, including positional
+      arguments and optional flags.
+
+      3. **Detailed option list** – a table with columns: *Option*, *Short form*,
+      *Default*, *Type*, *Description*, *Allowed values*.  Mention supported codecs
+      (e.g., `mp3`, `aac`, `flac`) and numeric types (integers, floats, ranges) where
+      relevant.
+
+      4. **Examples** – at least three annotated command lines illustrating common
+      workflows (e.g., converting a file, processing a batch, applying a filter).
+
+      5. **Error handling** – common error messages and actionable troubleshooting
+      steps, including exit codes and hints for diagnosing failures.
+
+      6. **Notes** – special considerations (e.g., case sensitivity, platform differences,
+      dependency requirements).
+
+
+      *Output format:*  Return the documentation as plain text with proper line breaks
+      and indentation.  The output must be a single string that can be directly inserted
+      into a README or manual page.
+
+
+      *No other data should be returned.*'
   document_command_line_tool_part2:
     agent: false
     description: Generates the second portion of the CLI tool documentation, including
@@ -549,32 +507,9 @@ nodes:
     - design_command_line_interface_combined
     nodes_dependent_on: []
     output_structure:
-    - description: Detailed, realistic command-line usage examples demonstrating various
-        CLI capabilities and workflows.
-      key: detailed_usage_examples
-      type: List[str]
-    - description: Exhaustive list detailing each CLI option, flag, their permissible
-        values, defaults, and descriptions.
-      key: options_breakdown
-      type: List[str]
-    - description: List of supported codecs with brief descriptions for each.
-      key: supported_codecs_summary
-      type: List[str]
-    - description: List of supported numeric types with descriptions or specific use
-        cases.
-      key: supported_numeric_types_summary
-      type: List[str]
-    - description: Step-by-step troubleshooting instructions for common errors and
-        possible resolution methods.
-      key: troubleshooting_guidance
-      type: List[str]
-    - description: Highlights cross-references to related commands, configurations,
-        or documentation sections.
-      key: cross_references_notes
-      type: List[str]
-    - description: Full compiled CLI documentation in well-structured and properly
-        formatted Markdown.
-      key: markdown_documentation
+    - description: Plain‑text Markdown documentation containing usage examples, option
+        details, supported codec and numeric type lists, and troubleshooting information.
+      key: documentation_text
       type: str
     prompt: 'Part 2: Write comprehensive and technically precise documentation for
       the CLI tool. Ensure the content includes detailed usage examples with realistic
@@ -599,17 +534,17 @@ nodes:
     - finalize_binary_data_parser_part2
     nodes_dependent_on: []
     output_structure:
-    - description: The absolute path of the generated ZIP archive containing the binary
-        data parser package.
-      key: zip_file_path
+    - description: The absolute path to the created ZIP archive.
+      key: zip_archive_path
       type: str
-    - description: List of relative file paths included in the ZIP archive.
-      key: file_paths
+    - description: A list of all file paths included in the ZIP archive.
+      key: manifest_files
       type: List[str]
-    - description: List of file sizes in bytes corresponding to each file in the archive.
+    - description: A list of file sizes (in bytes) corresponding to each file in the
+        manifest.
       key: file_sizes
       type: List[int]
-    - description: List of SHA-256 checksums for each file in the archive.
+    - description: A list of SHA‑256 checksums for each file in the archive.
       key: file_checksums
       type: List[str]
     prompt: '1. Load the two JSON package manifests generated by Part 1 and Part 2.
@@ -649,21 +584,13 @@ nodes:
     - document_command_line_tool_combined
     nodes_dependent_on: []
     output_structure:
-    - description: List of relative file paths included in the package
+    - description: List of relative file paths included in the package.
       key: file_paths
       type: List[str]
-    - description: List of UTF‑8 encoded file contents corresponding to the file paths
+    - description: List of file contents corresponding to each path in 'file_paths',
+        encoded as UTF-8 strings.
       key: file_contents
       type: List[str]
-    - description: Whether the package build was successful
-      key: is_build_success
-      type: bool
-    - description: Indicates if all unit tests passed successfully
-      key: unit_test_status
-      type: bool
-    - description: Determines if the generated wheel is installable locally
-      key: wheel_installable
-      type: bool
     prompt: "## 1️⃣ Create the first segment of the distribution package\n\n1. **Collect\
       \ source files** – Import the fully integrated parser module from *integrate_parsing_logic_combined*\
       \ and place it under `src/parser/__init__.py`. The module should expose a `main()`\
@@ -714,14 +641,15 @@ nodes:
     - document_command_line_tool_combined
     nodes_dependent_on: []
     output_structure:
-    - description: List of relative file paths included in the distribution package.
+    - description: List of all relative file paths included in the distribution package.
       key: file_paths
       type: List[str]
-    - description: List of file contents corresponding to each file path, keeping
-        the same order.
+    - description: List of file contents corresponding to the file paths, containing
+        the exact content of each file in UTF-8 format.
       key: file_contents
       type: List[str]
-    - description: Indicates whether the package passes all build and test validations.
+    - description: Indicates whether the final package successfully passed validation
+        steps, including `python -m build` and `python -m unittest`.
       key: validation_status
       type: bool
     prompt: "Using the fully merged parser script from **integrate_parsing_logic_combined**,\
@@ -759,22 +687,21 @@ nodes:
     - implement_codec_parsing_logic_part2
     nodes_dependent_on: []
     output_structure:
-    - description: List of successfully decoded outputs as strings for each codec
-        processed.
-      key: decoded_results
+    - description: A list of all the codec names supported by the consolidated module.
+      key: supported_codecs
       type: List[str]
-    - description: List of error messages encountered during decoding for unsupported
-        codecs or failed operations.
-      key: error_messages
+    - description: List of decoder function names registered in the module for handling
+        supported codecs.
+      key: decoder_registry_names
       type: List[str]
-    - description: List of codec names that were successfully registered and supported
-        by the module.
-      key: codec_list
-      type: List[str]
-    - description: Indicates whether the dispatch function executed successfully without
-        critical errors.
-      key: dispatch_success
+    - description: Indicates whether all supported codecs have been tested with unit
+        tests in the module.
+      key: test_coverage_status
       type: bool
+    - description: List of example error messages defined in the module (e.g., for
+        unsupported codecs or decoding failures).
+      key: error_messages_preview
+      type: List[str]
     prompt: 'Produce a single, cohesive Python module that merges the two partial
       codec parsing implementations from Part 1 and Part 2. Resolve any duplicate
       function names by refactoring or renaming, ensuring that each codec has a distinct
@@ -801,20 +728,22 @@ nodes:
     - define_supported_codecs_combined
     nodes_dependent_on: []
     output_structure:
-    - description: List of codec names mapped to respective decoding functions.
-      key: codec_names
+    - description: List of codec names that are supported and available for decoding
+        binary input streams.
+      key: supported_codecs
       type: List[str]
-    - description: Descriptions corresponding to each codec name, providing a summary
-        of codec functionality.
-      key: codec_descriptions
+    - description: List of decoder registry entries; each entry identifies a codec
+        and its associated decoding callable function.
+      key: decoder_registry
       type: List[str]
-    - description: The total number of codecs implemented and registered in the module.
-      key: supported_codecs_count
-      type: int
-    - description: Indicates whether error conditions and unsupported codecs were
-        successfully tested and verified.
-      key: error_cases_verified
-      type: bool
+    - description: Results of the unit tests (pass/fail) for verifying the decoders
+        and error handling across various supported codecs.
+      key: test_results
+      type: List[bool]
+    - description: List of error messages captured during testing, indicating issues
+        with specific codecs or input cases.
+      key: error_messages
+      type: List[str]
     prompt: "### Implementation Goal\nCreate a fully‑featured, type‑annotated Python\
       \ module that decodes binary input streams for every codec listed in the consolidated\
       \ codec definition produced by **define_supported_codecs_combined**. The module\
@@ -854,25 +783,26 @@ nodes:
     - define_supported_codecs_combined
     nodes_dependent_on: []
     output_structure:
-    - description: A list of codec names supported by the combined module.
+    - description: List of codec names for which dedicated decoding functions were
+        created.
       key: codec_names
       type: List[str]
-    - description: List of string representations of the decode function signatures
-        for each codec.
-      key: decode_function_signatures
+    - description: List of codec names successfully decoded by the created functions
+        in tests.
+      key: decoded_successes
       type: List[str]
-    - description: List of potential error messages that can be raised by the decoding
-        logic.
-      key: error_messages
+    - description: List of codec names where decoding failed during validation or
+        testing.
+      key: decode_failures
       type: List[str]
-    - description: The function signature of the dispatcher function that facilitates
-        codec lookups and decoding.
-      key: dispatcher_signature
-      type: str
-    - description: Descriptions of minimal unit-tests for each codec, represented
-        as strings.
-      key: unit_test_descriptions
-      type: List[str]
+    - description: Indicates whether all decoding functions have complete and accurate
+        docstrings.
+      key: docstring_compliance
+      type: bool
+    - description: Flag that denotes if minimal unit-test examples are provided for
+        all defined codecs.
+      key: test_coverage_compliance
+      type: bool
     prompt: "You are provided with a JSON list of supported codec names from the prior\
       \ node `define_supported_codecs_combined`. Write a complete, self‑contained\
       \ Python module that:\n\n1. Imports only standard libraries required for decoding\
@@ -896,7 +826,7 @@ nodes:
   implement_numeric_parsing_logic_combined:
     agent: false
     description: Creates a unified numeric parsing module by merging two partial implementations,
-      removing duplicate parsers, and exposing a clean, type‑annotated API that handles
+      removing duplicate parsers, and exposing a clean, type-annotated API that handles
       endianness, validates input, and allows runtime extension of supported numeric
       types. The module is ready for direct import by downstream workflow steps and
       includes minimal test scaffolding for verification.
@@ -906,24 +836,23 @@ nodes:
     - implement_numeric_parsing_logic_part2
     nodes_dependent_on: []
     output_structure:
-    - description: List of all supported numeric type identifiers, such as 'int16',
-        'uint32', 'float64'.
+    - description: List of numeric type identifiers supported by the parser (e.g.,
+        'int8', 'float32').
       key: supported_types
       type: List[str]
-    - description: Names of the consolidated parsing functions for each numeric type.
-      key: parse_functions
+    - description: List of error messages encountered during validation or parsing.
+      key: error_messages
       type: List[str]
-    - description: Indicates whether endianness handling is implemented for all supported
-        types.
-      key: has_endianness_support
-      type: bool
-    - description: List of test function names included in the module for verifying
-        correctness.
-      key: test_function_names
+    - description: List of unit test names verifying the parsing logic, type support,
+        and error handling.
+      key: unit_test_names
       type: List[str]
-    - description: Specifies whether the module allows runtime extension of numeric
-        types using a 'register_parser' helper function.
-      key: extension_allowed
+    - description: Count of successfully consolidated parser definitions.
+      key: parser_entries_count
+      type: int
+    - description: Indicates whether the parser supports runtime extension for additional
+        numeric types.
+      key: is_extensible
       type: bool
     prompt: 'Merge the two partial numeric parsing implementations produced by
 
@@ -955,8 +884,9 @@ nodes:
       5. **API Design** – Expose a single function ``parse_value(data: bytes, type_name:
       str, byteorder: str = ''little'') -> Any`` that looks up the appropriate parser.
 
-      6. **Documentation & Types** – Include clear docstrings, type annotations (Python 3.9+),
-      and a minimal unit‑test skeleton that verifies parsing for each supported type.
+      6. **Documentation & Types** – Include clear docstrings, type annotations (Python
+      3.9+), and a minimal unit-test skeleton that verifies parsing for each supported
+      type.
 
       7. **Extensibility** – Provide a ``register_parser`` helper so additional numeric
       types can be added at runtime.
@@ -976,7 +906,7 @@ nodes:
 
 
       Ensure the final output can be imported as a module and that downstream nodes
-      depending on this implementation will receive a clean, well‑documented API.'
+      depending on this implementation will receive a clean, well-documented API.'
   implement_numeric_parsing_logic_part1:
     agent: false
     description: Generates the first phase of a numeric parsing library. Using the
@@ -989,16 +919,15 @@ nodes:
     - define_supported_numeric_types_combined
     nodes_dependent_on: []
     output_structure:
-    - description: List of numeric type identifiers (e.g., int16, uint32) that were
-        successfully implemented in the parsing library.
-      key: parsed_numeric_types
+    - description: A list of the canonical names of supported numeric types.
+      key: type_names
       type: List[str]
-    - description: Example results of parsing a sample byte array using the implemented
-        parsing functions.
-      key: example_parsed_results
+    - description: A list of parsed numeric values derived from the provided byte
+        arrays using type-specific parsing.
+      key: parsed_values
       type: List[float]
-    - description: List of validation error descriptions encountered during implementation
-        (e.g., missing byte range or endianness mismatch).
+    - description: A list of error messages or warnings generated if specific validations
+        fail, such as byte length mismatches.
       key: validation_errors
       type: List[str]
     prompt: 'Part 1: Using the combined list of supported numeric types (obtained
@@ -1042,24 +971,16 @@ nodes:
     - define_supported_numeric_types_combined
     nodes_dependent_on: []
     output_structure:
-    - description: List of all numeric type names supported by this node (e.g., int8,
-        uint16, float32).
+    - description: List of supported numeric types for which parsing functions are
+        generated (e.g., ['int8', 'uint16', 'float32']).
       key: numeric_type_names
       type: List[str]
-    - description: List of struct format characters corresponding to each numeric
-        type (e.g., b for int8, H for uint16, f for float32).
-      key: struct_format_characters
+    - description: List of fully implemented Python function definitions as source
+        code strings for parsing each numeric type.
+      key: function_definitions
       type: List[str]
-    - description: List of offsets for each numeric type parsing function, specifying
-        where to start reading in the binary buffer.
-      key: offsets
-      type: List[int]
-    - description: List of supported endianness values ('little' or 'big') for each
-        numeric type parsing function.
-      key: endianness_settings
-      type: List[str]
-    - description: Error messages for invalid input conditions such as out-of-range
-        offsets or unsupported endianness.
+    - description: List of error messages that are handled in the parsing functions
+        (e.g., 'ValueError for unsupported endianness').
       key: error_messages
       type: List[str]
     prompt: 'For every numeric type emitted by the *define_supported_numeric_types_combined*
@@ -1113,26 +1034,22 @@ nodes:
     - integrate_parsing_logic_part2
     nodes_dependent_on: []
     output_structure:
-    - description: The complete Python script for the integrated CLI that merges codec
-        and numeric parsing logic into a single tool.
-      key: generated_script
+    - description: The complete Python script content as a string that integrates
+        parsing logic for codecs and numeric types along with a CLI.
+      key: script_content
       type: str
-    - description: Indicates whether the generated script is valid Python code and
-        compiles without syntax errors.
-      key: valid_code
-      type: bool
-    - description: A sample command-line invocation of the integrated Python tool,
-        explaining its usage.
-      key: example_usage
-      type: str
-    - description: A message summarizing successful integration and readiness for
-        packaging.
-      key: success_message
-      type: str
-    - description: List of successfully merged functions or components from parent
-        nodes.
-      key: merged_dependencies
+    - description: List of codec names supported by the integrated parsing logic.
+      key: allowed_codecs
       type: List[str]
+    - description: List of numeric types supported by the integrated parsing logic.
+      key: allowed_numeric_types
+      type: List[str]
+    - description: Example command lines to demonstrate the usage of the script.
+      key: example_command_lines
+      type: List[str]
+    - description: Indicates if the generated script compiles without any syntax errors.
+      key: successfully_compiles
+      type: bool
     prompt: "Merge the source code excerpts produced by the `integrate_parsing_logic_part1`\
       \ and `integrate_parsing_logic_part2` nodes into a single coherent Python file.\n\
       \nThe merged script must:\n1. Import the combined `implement_codec_parsing_logic_combined`,\
@@ -1164,19 +1081,23 @@ nodes:
     - design_command_line_interface_combined
     nodes_dependent_on: []
     output_structure:
-    - description: The path to the processed input file from the binary parser pipeline.
-      key: processed_file_path
-      type: str
-    - description: The decoded human-readable or structured output values corresponding
-        to the input binary file, based on codec and numeric type.
-      key: decoded_output
+    - description: Indicates whether argument parsing was successful
+      key: argument_parsing_status
+      type: bool
+    - description: List of validated arguments provided to the CLI
+      key: validated_arguments
       type: List[str]
-    - description: The format of the resultant output, either 'table' or 'json'.
+    - description: Indicates whether the binary file was successfully processed
+      key: file_processing_status
+      type: bool
+    - description: List of numeric data parsed from the binary file
+      key: parsed_data
+      type: List[float]
+    - description: Specifies the chosen output format (table or json)
       key: output_format
       type: str
-    - description: A list of log messages detailing each stage of the parsing process
-        for debugging and tracking purposes.
-      key: logging_messages
+    - description: Logs capturing key execution steps and decisions
+      key: execution_logs
       type: List[str]
     prompt: "Produce a complete, well‑documented Python 3 script that implements the\
       \ initial stage of the integrated parsing logic:\n\n1. **Imports** – Bring in\
@@ -1226,25 +1147,19 @@ nodes:
     - design_command_line_interface_combined
     nodes_dependent_on: []
     output_structure:
-    - description: The complete Python code for the fully-featured CLI application
-        that integrates codec-aware and numeric parsing functions.
-      key: script_code
+    - description: The numerical values parsed from the provided binary input based
+        on the selected codec and numeric type.
+      key: parsed_values
+      type: List[float]
+    - description: The format of the parsed output, either 'json' or 'text'.
+      key: output_format
       type: str
-    - description: List of supported codec names that can be applied to the binary
-        data.
-      key: supported_codecs
-      type: List[str]
-    - description: List of supported numeric types for interpreting the decoded binary
-        data.
-      key: supported_numeric_types
-      type: List[str]
-    - description: List of CLI arguments parsed and validated by the application.
-      key: cli_arguments
-      type: List[str]
-    - description: Specifies the possible logging levels used by the application,
-        such as DEBUG and INFO.
-      key: logging_levels
-      type: List[str]
+    - description: The codec used to decode the binary input.
+      key: codec_used
+      type: str
+    - description: The numeric type applied during parsing.
+      key: numeric_type_used
+      type: str
     prompt: "Write a comprehensive Python script that:\n\n1. **Imports and wiring**\
       \ – Import `Path` from `pathlib`, `argparse`, `logging`, and the merged parsing\
       \ functions (`parse_with_codec` and `parse_numeric_data`) produced in the *implement_*\
@@ -1331,21 +1246,24 @@ nodes:
     - write_test_cases_part2
     nodes_dependent_on: []
     output_structure:
-    - description: List of descriptive identifiers for the test cases in alphabetical
-        order.
+    - description: List of all test case names after merging and deduplication, sorted
+        alphabetically.
       key: test_names
       type: List[str]
-    - description: List of raw hexadecimal strings representing the encoded byte sequences.
-      key: input_bytes_list
+    - description: List of input byte sequences corresponding to all test cases in
+        the merged set.
+      key: input_bytes
       type: List[str]
-    - description: Expected decoded outputs for the test cases as JSON-serializable
-        strings.
+    - description: List of expected outputs for each test case in JSON-serialized
+        string form (e.g., numbers or strings).
       key: expected_outputs
       type: List[str]
-    - description: List of expected error descriptions, or 'null' for valid inputs.
+    - description: List of expected error messages or `null` for successful cases
+        in string form.
       key: expected_errors
       type: List[str]
-    - description: The timestamp in ISO 8601 format when the test cases were merged.
+    - description: Timestamp in ISO 8601 format indicating when the merge operation
+        was performed.
       key: merge_timestamp
       type: str
     prompt: 'Merge the JSON arrays returned by `write_test_cases_part1` and `write_test_cases_part2`
@@ -1359,7 +1277,7 @@ nodes:
       set to the current UTC time in ISO 8601 format. Return the complete JSON object.'
   write_test_cases_part1:
     agent: false
-    description: Generate the first part of a comprehensive, schema‑driven set of
+    description: Generate the first part of a comprehensive, schema-driven set of
       test cases for the integrated parsing logic. The node outputs a JSON array that
       covers every supported codec and numeric type, including boundary conditions,
       typical values, and deliberately malformed inputs to verify robust error handling.
@@ -1368,20 +1286,22 @@ nodes:
     - integrate_parsing_logic_combined
     nodes_dependent_on: []
     output_structure:
-    - description: List of descriptive identifiers for the test cases, e.g., `<codec>_<numeric_type>_<condition>`.
-      key: test_names
-      type: List[str]
-    - description: List of raw hexadecimal or ASCII strings representing the test
-        input byte sequences.
+    - description: A descriptive identifier for the test case following `<codec>_<numeric_type>_<condition>`
+        format.
+      key: test_name
+      type: str
+    - description: A raw hexadecimal or ASCII string representing the encoded byte
+        sequence.
       key: input_bytes
-      type: List[str]
-    - description: List of expected outputs for each test case as JSON-serializable
-        strings.
-      key: expected_outputs
-      type: List[str]
-    - description: List of expected error messages or nulls for each test case.
-      key: expected_errors
-      type: List[str]
+      type: str
+    - description: The value that the parsing function should return, serialized as
+        a string if necessary.
+      key: expected_output
+      type: str
+    - description: A string describing the expected exception or `null` for valid
+        cases.
+      key: expected_error
+      type: str
     prompt: "Part 1: Produce an exhaustive set of test cases that exercise all codecs\
       \ (base64, hex, url‑safe, binary, etc.) and numeric types (int8, uint8, int16,\
       \ uint16, int32, uint32, int64, uint64, float32, float64) used by the parsing\
@@ -1422,19 +1342,18 @@ nodes:
     - integrate_parsing_logic_combined
     nodes_dependent_on: []
     output_structure:
-    - description: List of descriptive identifiers for each test case.
+    - description: List of descriptive identifiers for the test cases.
       key: test_names
       type: List[str]
     - description: List of raw hexadecimal strings representing encoded byte sequences
-        for each test case.
+        for the test cases.
       key: input_bytes_list
       type: List[str]
-    - description: List of expected decoded outputs as JSON-escaped strings; use `null`
-        for expected decoding failures.
+    - description: List of JSON-escaped output values or 'null' for invalid inputs.
       key: expected_outputs
       type: List[str]
-    - description: List of fully-qualified error class names (e.g., 'ValueError')
-        or `null` for successful cases.
+    - description: List of fully-qualified error names (e.g., `ValueError`) or 'null'
+        to indicate no errors for successful cases.
       key: expected_errors
       type: List[str]
     prompt: "Part 2: Draft a comprehensive, deterministic test suite covering all\
