@@ -1,1376 +1,1202 @@
-dag_type: typed
+dag_type: plain_text
 description: Generated workflow from UI.
 name: build_binary_data_parser_with_parallel_parts
 nodes:
   define_supported_codecs_combined:
     agent: false
-    description: Consolidates two partial codec lists into a single, de‑duplicated,
-      alphabetically sorted array. The node guarantees that each codec identifier
-      appears only once, preserves the descriptive metadata, and produces a canonical
-      JSON payload suitable for downstream parsing modules.
+    description: Creates the authoritative codec registry for the binary parser by
+      merging the two pre‑validated partial lists. It removes duplicates (by identical
+      `codec`), preserves the first occurrence, sorts alphabetically, validates the
+      schema, and emits a canonical JSON array ready for downstream parsing modules.
+      Malformed input triggers a clear error.
     name: define_supported_codecs_combined
     nodes_depended_on:
     - define_supported_codecs_part1
     - define_supported_codecs_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: Alphabetically sorted list of unique codec identifiers.
-      key: canonical_codec_identifiers
-      type: List[str]
-    - description: List of concise descriptions corresponding to each codec in the
-        canonical_codec_identifiers list.
-      key: canonical_codec_descriptions
-      type: List[str]
-    - description: Error message if validation of the input JSON fails, or an empty
-        string if no errors.
-      key: validation_errors
-      type: str
-    prompt: 'Merge the two JSON arrays emitted by *define_supported_codecs_part1*
-      and *define_supported_codecs_part2* into a single, canonical list of codecs.
-      Each array element is an object with the fields `codec` (string) and `description`
-      (string). Perform the following:
-
-      1. Concatenate the arrays.
-
-      2. Remove duplicate codec entries—duplicates are identified by identical `codec`
-      values; keep the first occurrence.
-
-      3. Sort the resulting array alphabetically by the `codec` identifier.
-
-      4. Return the sorted array as a well‑formed JSON array of objects, exactly matching
-      the input schema.
-
-      5. Validate that every `codec` string is non‑empty and that each `description`
-      is a concise one‑line summary.
-
-      6. If any input contains malformed JSON or missing required fields, raise an
-      informative error.
-
-
-      The final output will serve as the authoritative registry for the binary parser’s
-      supported codecs.'
+    prompt: "### Purpose\nMerge the two JSON arrays emitted by **define_supported_codecs_part1**\
+      \ and **define_supported_codecs_part2** into a single, canonical codec registry.\n\
+      \n### Input Format\n* Two well‑formed JSON arrays, each containing objects with\
+      \ the exact schema:\n  ```json\n  { \"codec\": \"<non‑empty string>\", \"description\"\
+      : \"<single‑line text>\" }\n  ```\n* `codec` must be a non‑empty string.\n*\
+      \ `description` must be a single line with no line breaks and no more than 30\
+      \ words.\n\n### Validation Rules\n1. Every element must contain both `codec`\
+      \ and `description`.\n2. `codec` values are case‑insensitive identifiers; duplicates\
+      \ are identified by exact string match.\n3. `description` is trimmed of leading/trailing\
+      \ whitespace.\n4. Any deviation (malformed JSON, missing fields, empty values,\
+      \ multi‑line description, >30 words) causes the node to raise an error with\
+      \ a descriptive message.\n\n### Transformation Steps\n1. Concatenate the two\
+      \ arrays in the order received.\n2. Iterate through the concatenated list, adding\
+      \ each entry to a result array only if its `codec` has not been seen before.\
+      \ Preserve the first occurrence.\n3. Sort the result array alphabetically by\
+      \ the `codec` field (Unicode code‑point order).\n\n### Output\n* A single, well‑formed\
+      \ JSON array of the deduplicated, sorted codec objects.\n* No additional text,\
+      \ comments, or formatting.\n\n### Error Handling\nIf validation fails, raise\
+      \ an exception containing a clear error message. The downstream system will\
+      \ treat any non‑JSON output as a failure.\n\n*Example of a successful output*:\n\
+      ```json\n[{\n  \"codec\": \"ascii\",\n  \"description\": \"7‑bit ASCII, no BOM,\
+      \ .txt\"\n},{\n  \"codec\": \"utf-8\",\n  \"description\": \"Unicode UTF‑8,\
+      \ variable length, optional BOM, .txt, .json, RFC 3629\"\n}]\n```\n\nThis registry\
+      \ is the authoritative source for all downstream parsing modules."
   define_supported_codecs_part1:
     agent: false
-    description: Generate a structured, technically detailed enumeration of the first
-      half of the binary parser’s supported codec identifiers.  This includes common
-      text encodings (ASCII, ISO‑8859‑1, Windows‑1252, UTF‑8, UTF‑16 variants, UTF‑32
-      variants, UTF‑7) and a binary representation (Base64).  Each entry must provide
-      the codec’s canonical name and a short, specification‑driven description covering
-      reference standards, byte patterns or BOMs, typical file extensions or MIME
-      types, and any special parsing notes.  The output is a JSON array of objects
-      with fields `codec` and `description`, ready for downstream consumption.
+    description: Generates a technically detailed enumeration of the binary parser’s
+      supported codec identifiers for the first half of the catalogue. The list includes
+      common text encodings (ASCII, ISO‑8859‑1, Windows‑1252, UTF‑8, UTF‑16 variants,
+      UTF‑32 variants, UTF‑7) and a binary representation (Base64). Each entry contains
+      the codec’s canonical name and a concise, specification‑driven description that
+      covers reference standard, BOM or byte patterns, typical file extensions or
+      MIME types, and any special parsing nuances. The output is a JSON array of objects
+      with `codec` and `description` fields, ready for downstream consumption.
     name: define_supported_codecs_part1
     nodes_depended_on: []
     nodes_dependent_on: []
-    output_structure:
-    - description: Ordered list of codec identifiers as specified in the output array.
-      key: codecs
-      type: List[str]
-    - description: Ordered list of textual descriptions corresponding to each codec;
-        the nth entry aligns with the nth codec.
-      key: descriptions
-      type: List[str]
-    prompt: "Part 1: Generate the first segment of the supported codecs list for the\
-      \ binary parser.  Include the following encodings:\n\n* **ASCII** – 7‑bit, no\
-      \ BOM, .txt\n* **ISO‑8859‑1** – 8‑bit, no BOM, .txt, .html\n* **Windows‑1252**\
-      \ – 8‑bit, no BOM, .txt, .html\n* **UTF‑8** – variable‑length, optional BOM,\
-      \ .txt, .json, RFC 3629\n* **UTF‑16LE** – 16‑bit, mandatory BOM `0xFF 0xFE`,\
-      \ .txt, .xml\n* **UTF‑16BE** – 16‑bit, mandatory BOM `0xFE 0xFF`, .txt, .xml\n\
-      * **UTF‑32LE** – 32‑bit, mandatory BOM `0xFF 0xFE 0x00 0x00`, .txt\n* **UTF‑32BE**\
-      \ – 32‑bit, mandatory BOM `0x00 0x00 0xFE 0xFF`, .txt\n* **UTF‑7** – 7‑bit,\
-      \ optional BOM, legacy .msg files\n* **Base64** – binary‑to‑text, no BOM, MIME\
-      \ type `application/base64`\n\nFor each codec, produce an object with the fields:\n\
-      - `codec`: the canonical identifier string (e.g., `UTF-8`).\n- `description`:\
-      \ a concise technical summary that includes:\n  - Reference standard (RFC or\
-      \ ISO number).\n  - Typical byte‑range or BOM presence.\n  - Common file extensions\
-      \ or MIME type.\n  - Parsing nuances (e.g., endianess, padding, variable‑length).\n\
-      \nReturn the data as a JSON array of these objects **only**—no additional text,\
-      \ comments, or formatting.  This list represents the first half of the full\
-      \ codec catalogue; subsequent nodes will supply the remainder.\n\nEnsure the\
-      \ JSON is syntactically correct and ready for consumption by downstream parsing\
-      \ logic."
+    prompt: "Generate the first segment of the binary parser’s supported codec catalogue.\
+      \ Include these encodings:\n\n- **ASCII** – 7‑bit, no BOM, typical extensions:\
+      \ `.txt`, MIME `text/plain`.\n- **ISO‑8859‑1** – 8‑bit, no BOM, extensions:\
+      \ `.txt`, `.html`, MIME `text/html`.\n- **Windows‑1252** – 8‑bit, no BOM, extensions:\
+      \ `.txt`, `.html`, MIME `text/html`.\n- **UTF‑8** – variable‑length, optional\
+      \ BOM `EF BB BF`, extensions: `.txt`, `.json`, MIME `application/json`, RFC 3629.\n\
+      - **UTF‑16LE** – 16‑bit, mandatory BOM `FF FE`, extensions: `.txt`, `.xml`,\
+      \ MIME `application/xml`.\n- **UTF‑16BE** – 16‑bit, mandatory BOM `FE FF`, extensions:\
+      \ `.txt`, `.xml`, MIME `application/xml`.\n- **UTF‑32LE** – 32‑bit, mandatory\
+      \ BOM `FF FE 00 00`, extension: `.txt`, MIME `text/plain`.\n- **UTF‑32BE** –\
+      \ 32‑bit, mandatory BOM `00 00 FE FF`, extension: `.txt`, MIME `text/plain`.\n\
+      - **UTF‑7** – 7‑bit, optional BOM, legacy `.msg` files, MIME `message/rfc822`.\n\
+      - **Base64** – binary‑to‑text, no BOM, MIME `application/base64`.\n\nFor each\
+      \ codec output a JSON object with the following fields:\n- `codec`: canonical\
+      \ identifier string (e.g., `UTF-8`).\n- `description`: a concise technical summary\
+      \ containing:\n  1. Reference standard (RFC or ISO number).\n  2. Byte‑range\
+      \ or BOM presence.\n  3. Common file extensions or MIME type.\n  4. Parsing\
+      \ nuances (endianness, padding, variable‑length, etc.).\n\nReturn **only** a\
+      \ syntactically correct JSON array of these objects—no additional text, comments,\
+      \ or formatting. This list represents the first half of the full codec catalogue;\
+      \ a subsequent node will supply the remainder. The output must be ready for\
+      \ downstream parsing logic."
   define_supported_codecs_part2:
     agent: false
-    description: Generate the second segment of the binary parser’s codec catalog,
-      detailing additional text and binary encodings. Provide a JSON array of codec
-      objects—each with a unique identifier, a concise yet technically rich description
-      (covering BOM handling, endianness, common use‑cases), and any relevant MIME
-      or flag metadata. The output must be alphabetically sorted and syntactically
-      valid so it can be seamlessly merged with the first segment by downstream nodes.
+    description: Produces the second segment of the binary parser’s codec registry.
+      Enumerates additional text and binary encodings, generating an alphabetically
+      sorted, syntactically correct JSON array of codec objects. Each object contains
+      a unique identifier, a concise 30‑word description covering BOM handling, endianness,
+      common use‑cases, and optional MIME or flag metadata, ensuring seamless integration
+      with the first segment by downstream nodes.
     name: define_supported_codecs_part2
     nodes_depended_on: []
     nodes_dependent_on: []
-    output_structure:
-    - description: JSON array of codec objects as defined by this node. Each object
-        includes fields `codec`, `description`, and optionally `mime` and `bom`.
-      key: codec_catalog_json
-      type: str
-    prompt: "You are tasked with completing the second segment of the binary parser’s\
-      \ codec registry.\n\n1. Enumerate **additional text and binary encodings** that\
-      \ the parser must support, building on the first part of the list. Include at\
-      \ least:\n   - Text encodings: ASCII, ISO‑8859‑1, UTF‑8, UTF‑16LE, UTF‑16BE,\
-      \ UTF‑32LE, UTF‑32BE, Shift‑JIS, GB2312, and ISO‑2022‑JP.\n   - Binary representations:\
-      \ Base64, Base32, Base16 (hex), and URL‑safe Base64.\n2. For **each codec**\
-      \ provide:\n   - `codec`: a unique identifier string (e.g., \"utf-8\", \"base64\"\
-      ).\n   - `description`: a concise paragraph (max 30 words) covering the codec’s\
-      \ core characteristics (e.g., support for BOM, typical usage, endianness handling,\
-      \ and any special parsing caveats).\n   - Optionally include `mime` and `bom`\
-      \ flags as extra JSON fields if relevant.\n3. The output must be a **syntactically\
-      \ correct JSON array** of objects, sorted alphabetically by the `codec` field.\n\
-      4. The array should be ready for ingestion by downstream nodes that merge this\
-      \ segment with part 1 to form the complete codec catalog.\n5. No extraneous\
-      \ text or commentary—only the JSON array."
+    prompt: 'Generate a syntactically valid JSON array of codec objects for the following
+      encodings: ASCII, ISO‑8859‑1, UTF‑8, UTF‑16LE, UTF‑16BE, UTF‑32LE, UTF‑32BE,
+      Shift‑JIS, GB2312, ISO‑2022‑JP, Base64, Base32, Base16 (hex), URL‑safe Base64.
+      For each codec object, provide:
+
+      - `codec`: a unique identifier string (e.g., "utf-8", "base64").
+
+      - `description`: a concise paragraph no longer than 30 words, covering BOM presence,
+      typical usage, endianness handling, and any special parsing caveats.
+
+      - Optionally `mime` and `bom` flags if relevant.
+
+      The resulting array must be alphabetically sorted by the `codec` field and ready
+      to be merged with the first segment of the codec catalog by downstream nodes.
+      Do not include any additional text or commentary—output only the JSON array.'
   define_supported_numeric_types_combined:
     agent: false
-    description: Combines the two partial numeric type specifications generated by
-      the parent nodes into a single, canonical list. The node merges the JSON arrays,
-      deduplicates by the "type" field, validates required fields, sorts the entries
-      alphabetically, and emits a clean JSON array of type‑description objects that
-      defines the complete set of numeric data types the parser must handle.
+    description: Merges the two partial numeric type catalogs produced by the parent
+      nodes into a single canonical list. It validates that each entry contains the
+      required `type` and `description` fields, removes duplicate type entries, sorts
+      the list alphabetically by `type`, and emits a clean JSON array suitable for
+      ingestion by the parser’s configuration system.
     name: define_supported_numeric_types_combined
     nodes_depended_on:
     - define_supported_numeric_types_part1
     - define_supported_numeric_types_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: List of numeric type identifiers in canonical alphabetical order
-      key: type_names
-      type: List[str]
-    - description: Corresponding list of descriptions for each numeric type, aligned
-        with type_names
-      key: type_descriptions
-      type: List[str]
-    prompt: "Merge the two JSON arrays supplied by the parent nodes \"define_supported_numeric_types_part1\"\
-      \ and \"define_supported_numeric_types_part2\". Remove any duplicate entries\
-      \ by matching the exact string value of the \"type\" field. Validate that each\
-      \ object contains both a \"type\" and a \"description\" field of type string.\
-      \ After deduplication, sort the resulting array alphabetically by the \"type\"\
-      \ field. Output only the final JSON array of objects; no additional text. Example\
-      \ output:\n\n```json\n[\n  {\"type\": \"int16\", \"description\": \"Signed 16‑bit\
-      \ integer, little endian\"},\n  {\"type\": \"uint8\", \"description\": \"Unsigned\
-      \ 8‑bit integer, little endian\"}\n]\n```\n\nThis array will serve as the definitive\
-      \ list of numeric data types the parser must support."
+    prompt: "Combine the two JSON arrays supplied by the parent nodes `define_supported_numeric_types_part1`\
+      \ and `define_supported_numeric_types_part2`.\n\n1. Merge the arrays into a\
+      \ single list.\n2. Validate each object: it must contain a **string** field\
+      \ `type` and a **string** field `description`; discard any objects that do not\
+      \ meet this criterion.\n3. Deduplicate by exact match of the `type` value—retain\
+      \ only one instance of each unique `type`.\n4. Sort the resulting array alphabetically\
+      \ by the `type` field.\n5. Output **only** the final JSON array. Do not include\
+      \ any explanatory text, comments, or surrounding code.\n\nExample output:\n\
+      ```json\n[\n  {\"type\": \"int16\", \"description\": \"signed 16‑bit little\
+      \ endian integer\"},\n  {\"type\": \"uint8\", \"description\": \"unsigned 8‑bit\
+      \ little endian integer\"}\n]\n```"
   define_supported_numeric_types_part1:
     agent: false
-    description: Enumerates the primitive scalar types that the parser must recognize
-      in its first pass. The catalog includes signed and unsigned 8, 16, 32, and 64‑bit
-      integers, as well as IEEE 754 single and double‑precision floating‑point values.
-      For each type the node produces a concise technical descriptor, the canonical
-      type name, and the required byte order (where meaningful). The resulting JSON
-      array is designed for seamless consumption by downstream validation and type‑checking
-      modules.
+    description: Defines the exhaustive set of primitive numeric scalar types that
+      the parser must detect during its initial lexing pass. It enumerates signed
+      and unsigned 8, 16, 32, and 64‑bit integers, and IEEE 754 single‑ and double‑precision
+      floating‑point numbers. For each type the node emits a minimal yet complete
+      metadata record containing the canonical type identifier, a terse technical
+      description (including sign convention, binary representation, and common application
+      domains), the byte‑order requirement when applicable, and, for floating‑point
+      types, the precision label. The resulting JSON array is deliberately lightweight
+      and strictly typed to serve as an authoritative reference for downstream type‑validation,
+      schema‑generation, and code‑generation components.
     name: define_supported_numeric_types_part1
     nodes_depended_on: []
     nodes_dependent_on: []
-    output_structure:
-    - description: Canonical name of the numeric type, e.g., int8
-      key: type_name
-      type: str
-    - description: Technical description covering sign convention, encoding, and typical
-        use case.
-      key: description
-      type: str
-    - description: Endianness for the type; empty string if the type is endianness‑agnostic.
-      key: byte_order
-      type: str
-    - description: Floating‑point precision ('single' or 'double'); empty string for
-        non‑floating types.
-      key: precision
-      type: str
-    prompt: 'Generate Part 1 of the parser’s supported numeric type catalog. For each
-      scalar type, provide:
-
-
-      - **type**: canonical name (e.g., int8, uint16, float32, float64).
-
-      - **description**: a concise technical note covering sign convention, encoding
-      (two’s‑complement for integers, IEEE 754 for floating point), and typical use
-      case.
-
-      - **byte_order**: "little" or "big" endianness when applicable; omit for types
-      where endianness is irrelevant.
-
-      - **precision** (optional, only for floating‑point types): "single" for float32,
-      "double" for float64.
-
-
-      The output must be a valid JSON array of objects, each with the keys above.
-      This JSON should be immediately ingestible by downstream validation modules.'
+    prompt: 'Output the first part of the parser’s numeric‑type catalog as a strictly‑typed
+      JSON array.\n\nFor each primitive scalar type you must provide the following
+      properties:\n\n- **type** – the canonical identifier (e.g., `int8`, `uint16`,
+      `float32`, `float64`).\n- **description** – a concise technical note that covers
+      sign convention, binary encoding (two’s‑complement for integers, IEEE 754 for
+      floating‑point values), and a typical application domain.\n- **byte_order**
+      – either `little` or `big` when the type’s representation depends on endianness;
+      omit this key for types where byte order is irrelevant (e.g., 8‑bit types or
+      floating‑point precision itself).\n- **precision** – optional; present only
+      for floating‑point types (`float32` → `single`, `float64` → `double`).\n\nThe
+      output must be a valid JSON array of objects, each containing exactly the keys
+      specified above, and **no additional keys or comments**. The array should be
+      immediately consumable by downstream validation and type‑checking modules.\n\nExample
+      (only for illustration; do **not** include in the output):\n```json\n[{\n  \"type\":
+      \"int8\",\n  \"description\": \"Signed 8‑bit integer, two’s‑complement representation,
+      used for small signed counters.\",\n  \"byte_order\": \"little\"\n}]\n```\n\nDeliver
+      only the JSON array; do not prepend or append any explanatory text.'
   define_supported_numeric_types_part2:
     agent: false
-    description: Produces the second segment of the parser’s numeric type specification.
-      This node lists the remaining signed and unsigned integer types (8, 16, 32, 64 bits)
-      and floating‑point types (single and double precision), explicitly indicating
-      signedness, bit width, and byte order. The output is a JSON array of objects
-      suitable for direct ingestion into the parser’s configuration schema.
+    description: Generates the second segment of the parser’s numeric type catalog
+      by enumerating all remaining signed and unsigned integer types and floating‑point
+      types. For each type, the node emits two JSON objects—one for little‑endian
+      and one for big‑endian representation—each containing a concise description
+      that specifies signedness, bit width, byte order, and data category. The resulting
+      array is ready for direct ingestion into the parser configuration schema.
     name: define_supported_numeric_types_part2
     nodes_depended_on: []
     nodes_dependent_on: []
-    output_structure:
-    - description: The numeric type identifier (e.g., "int16", "uint32", "float64").
-      key: type
-      type: str
-    - description: A human‑readable description indicating signedness, bit width,
-        and endian-ness.
-      key: description
-      type: str
-    prompt: "Generate Part 2 of the numeric type catalog for the parser. Enumerate\
-      \ the numeric data types that remain to be specified, namely:\n\n1. Signed integers:\
-      \ int8, int16, int32, int64\n2. Unsigned integers: uint8, uint16, uint32, uint64\n\
-      3. Floating‑point: float32 (single precision), float64 (double precision)\n\n\
-      For each type, produce a JSON object with the following fields:\n- **type**\
-      \ – a string such as \"int16\", \"uint32\", \"float64\"\n- **description** –\
-      \ a concise sentence that specifies the signedness (if applicable), the bit\
-      \ width, and the byte order. For example, \"signed 32‑bit little endian integer\"\
-      \ or \"unsigned 64‑bit big endian integer\". If the type is endianness‑agnostic\
-      \ (e.g., floating‑point in a fixed‑byte order environment), include the appropriate\
-      \ endianness in the description.\n\nIf a type can be represented in both little\
-      \ and big endian forms, emit two separate objects, one for each endianness.\n\
-      \nThe final output must be a well‑formed JSON array containing all such objects.\
-      \ This array will be consumed directly by the parser configuration generator.\n\
-      \n**Example output snippet**:\n```json\n[{\n  \"type\": \"int16\",\n  \"description\"\
-      : \"signed 16‑bit little endian integer\"\n},{\n  \"type\": \"int16\",\n  \"\
-      description\": \"signed 16‑bit big endian integer\"\n}, …]\n```"
+    prompt: "Generate the second part of the parser’s numeric‑type catalog. The catalog\
+      \ must include every remaining signed and unsigned integer type (int8, int16,\
+      \ int32, int64, uint8, uint16, uint32, uint64) and floating‑point type (float32,\
+      \ float64). For each type emit **two** JSON objects—one for little‑endian and\
+      \ one for big‑endian representation—unless the type is explicitly endianness‑agnostic.\
+      \ Each object must contain:\n\n- **type**: the exact type name, e.g., \"int16\"\
+      \ or \"float64\".\n- **description**: a single, self‑contained sentence that\
+      \ states the signedness (if applicable), the bit width, the byte order, and\
+      \ the data category.  The format should read:\n  * \"[signedness] [bit‑width]-bit\
+      \ [little/big] endian [integer/floating‑point]\".\n  * Example: \"signed 16‑bit\
+      \ little endian integer\" or \"unsigned 32‑bit big endian integer\".\n  * For\
+      \ floating‑point types, include the word \"floating‑point\" in the description.\n\
+      \nThe output must be **one** well‑formed JSON array containing all generated\
+      \ objects, with no extraneous keys or wrappers. The array is intended for direct\
+      \ ingestion by the parser configuration generator. Do not add comments or formatting\
+      \ that would break strict JSON parsing.\n\n**Example of a complete output**:\n\
+      ```json\n[\n  {\"type\": \"int16\", \"description\": \"signed 16‑bit little\
+      \ endian integer\"},\n  {\"type\": \"int16\", \"description\": \"signed 16‑bit\
+      \ big endian integer\"},\n  {\"type\": \"uint32\", \"description\": \"unsigned\
+      \ 32‑bit little endian integer\"},\n  {\"type\": \"uint32\", \"description\"\
+      : \"unsigned 32‑bit big endian integer\"},\n  {\"type\": \"float32\", \"description\"\
+      : \"floating‑point 32‑bit little endian\"},\n  {\"type\": \"float32\", \"description\"\
+      : \"floating‑point 32‑bit big endian\"}\n  // …additional objects for the remaining\
+      \ types…\n]\n```\nEnsure the final array includes objects for all specified\
+      \ types in both endianness forms."
   design_command_line_interface_combined:
     agent: false
-    description: Consolidates two partially‑designed command‑line interface specifications
-      into a single, validated JSON schema, resolving argument duplications, normalizing
-      flag definitions, and ensuring type correctness for a robust binary parser CLI.
+    description: Merges, deduplicates, and validates two partially‑designed CLI schemas
+      into a single, RFC‑8259 compliant JSON definition. The node resolves flag conflicts
+      by preferring the second part, logs overrides, enforces type consistency, requiredness,
+      and produces a clean schema ready for consumption by downstream tooling.
     name: design_command_line_interface_combined
     nodes_depended_on:
     - design_command_line_interface_part1
     - design_command_line_interface_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: The fully merged command‑line interface specification in JSON format.
-      key: final_spec
-      type: str
-    - description: A list of validation error messages; empty if no errors.
-      key: errors
-      type: List[str]
-    - description: A list of human‑readable descriptions of any overridden arguments.
-      key: conflicts
-      type: List[str]
-    prompt: "Merge the JSON specifications generated by `design_command_line_interface_part1`\
-      \ and `design_command_line_interface_part2` into a single, fully‑consolidated\
-      \ CLI description:\n\n1. **Core Metadata** – Ensure the `name` and `description`\
-      \ fields are identical in both parts; if they differ, select the value from\
-      \ Part 2 and record a note in the output.\n2. **Argument Consolidation** – Concatenate\
-      \ the two `arguments` arrays, then deduplicate entries by their `flag` (or `long`\
-      \ if `flag` is absent). When an argument appears in both parts, prefer the Part 2\
-      \ definition, but include a `conflict_resolution` object noting the original\
-      \ values.\n3. **Type & Default Validation** – For each argument, verify that\
-      \ the `default` value conforms to the declared `type` (`string`, `integer`,\
-      \ `boolean`, `list`). If a mismatch is detected, flag an error and provide a\
-      \ suggested correction.\n4. **Required Flag Enforcement** – All arguments marked\
-      \ `required: true` in either part must appear in the final list; missing required\
-      \ arguments must trigger an error.\n5. **JSON Schema Compliance** – Output the\
-      \ final specification as pretty‑printed JSON that conforms to the following\
-      \ schema:\n   ```json\n   {\n     \"name\": \"string\",\n     \"description\"\
-      : \"string\",\n     \"arguments\": [\n       {\n         \"flag\": \"string\"\
-      ,\n         \"short\": \"string\",\n         \"long\": \"string\",\n       \
-      \  \"default\": <any>,\n         \"help\": \"string\",\n         \"required\"\
-      : \"boolean\",\n         \"type\": \"string\"\n       }\n     ]\n   }\n   ```\n\
-      6. **Conflict Log** – Append a `conflicts` array summarizing any overridden\
-      \ arguments, listing the original and final values.\n\nReturn the complete specification\
-      \ in JSON. If any validation errors arise, output an `errors` array describing\
-      \ the issue(s) and abort the merge.\n"
+    prompt: "1. **Input**: Parse the JSON objects produced by `design_command_line_interface_part1`\
+      \ and `design_command_line_interface_part2`.\n\n2. **Metadata Harmonisation**\n\
+      \   - Verify that the `name` and `description` fields match across both parts.\
+      \ If they differ, adopt the value from Part 2 and record a note in the output.\n\
+      \n3. **Argument Aggregation**\n   - Concatenate the `arguments` arrays from\
+      \ both parts.\n   - Deduplicate entries using the `flag` value; if `flag` is\
+      \ absent, use the `long` value. When an argument appears twice, keep the Part 2\
+      \ definition as the canonical form and attach a `conflict_resolution` object\
+      \ containing the original Part 1 values.\n\n4. **Type & Default Verification**\n\
+      \   - For each argument, ensure that the `default` value is compatible with\
+      \ the declared `type` (`string`, `integer`, `boolean`, `list`). Flag a mismatch\
+      \ as an error and propose a correction.\n\n5. **Requiredness Enforcement**\n\
+      \   - All arguments marked `required: true` in either part must appear in the\
+      \ final list. If any required argument is missing, emit an error.\n\n6. **Output\
+      \ Schema**\n   - Emit a single JSON object conforming to the following structure:\n\
+      \     ```json\n     {\n       \"name\": \"string\",\n       \"description\"\
+      : \"string\",\n       \"arguments\": [\n         {\n           \"flag\": \"\
+      string\",\n           \"short\": \"string | null\",\n           \"long\": \"\
+      string | null\",\n           \"default\": <any>,\n           \"help\": \"string\"\
+      ,\n           \"required\": true | false,\n           \"type\": \"string\"\n\
+      \         }\n       ]\n     }\n     ```\n   - The output must be pretty‑printed\
+      \ and valid per RFC‑8259.\n\n7. **Conflict Log**\n   - Append a `conflicts`\
+      \ array to the final JSON summarising any overridden arguments. Each entry should\
+      \ include `flag`, `original`, and `resolved` values.\n\n8. **Error Handling**\n\
+      \   - If any validation rule fails, return an object containing an `errors`\
+      \ array describing each issue and halt the merge. Do not produce a `conflicts`\
+      \ array in this case.\n\n9. **Final Output**\n   - Return the fully consolidated\
+      \ CLI definition. If errors were detected, output the `errors` array instead.\n\
+      \nThe generated JSON must be free of syntax errors, ready for downstream consumption.\n"
   design_command_line_interface_part1:
     agent: false
-    description: Produces the first‑stage blueprint for the binary parser’s command‑line
-      interface. This blueprint must be serializable in JSON, detailing each flag’s
-      short and long forms, type, requirement status, default value, and help text.
-      The design references the combined codec and numeric type enumerations generated
-      by the dependencies `define_supported_codecs_combined` and `define_supported_numeric_types_combined`,
-      ensuring that validation lists are up‑to‑date and free of duplicates.
+    description: Creates an exhaustive, JSON‑serializable specification for the binary
+      parser’s command‑line interface. The blueprint enumerates every flag and argument,
+      their short/long forms, data types, requirement flags, defaults, help texts,
+      and validation constraints drawn from the de‑duplicated codec and numeric type
+      registries produced by `define_supported_codecs_combined` and `define_supported_numeric_types_combined`.
+      This design guarantees consistency, prevents duplication, and supplies a ready‑to‑consume
+      interface definition for downstream parsing modules.
     name: design_command_line_interface_part1
     nodes_depended_on:
     - define_supported_codecs_combined
     - define_supported_numeric_types_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: Complete JSON specification of the command‑line interface, including
-        name, description, and argument definitions.
-      key: cli_spec
-      type: str
-    prompt: 'Craft a concise yet comprehensive JSON specification for a command‑line
-      interface tailored to a binary parser binary. The specification should include:
-
-
-      1. **Help flag**: `-h`, `--help` – displays usage and exits.
-
-      2. **Input file argument**: `-i <file>`, `--input <file>` – mandatory, type
-      `string`, required.
-
-      3. **Codec selector**: `-c <codec>`, `--codec <codec>` – optional, type `string`,
-      allowed values populated from `define_supported_codecs_combined`. Default to
-      the first codec in that list.
-
-      4. **Numeric type selector**: `-t <type>`, `--type <type>` – optional, type
-      `string`, allowed values populated from `define_supported_numeric_types_combined`.
-      Default to the first type in that list.
-
-      5. **Verbosity flag**: `-v`, `--verbose` – optional boolean toggle.
-
-      6. **Output format flag**: `-o <fmt>`, `--output-format <fmt>` – optional, type
-      `string`, allowed values `{"json", "text", "csv"}` with a default of `json`.
-
-
-      Each argument object must contain the following fields: `flag`, `short`, `long`,
-      `default`, `help`, `required`, `type`. The final JSON should be an object with
-      keys `name`, `description`, and an array `arguments` of these objects. Ensure
-      that all strings are quoted, arrays are properly closed, and the JSON is valid
-      per RFC‑8259.
-
-
-      Output the complete JSON specification without any surrounding commentary.'
+    prompt: "Generate a complete, RFC‑8259 compliant JSON object that specifies the\
+      \ command‑line interface for the binary parser binary. The object must contain\
+      \ the keys `name`, `description`, and `arguments`. For each argument, provide\
+      \ the following fields:\n\n- `flag`: a concise description of the flag (e.g.,\
+      \ \"Help flag\").\n- `short`: the single‑character short form (e.g., \"-h\"\
+      ).\n- `long`: the multi‑character long form (e.g., \"--help\").\n- `type`: the\
+      \ expected data type (`string`, `boolean`).\n- `required`: a boolean indicating\
+      \ whether the argument must be supplied.\n- `default`: the default value (use\
+      \ the first element from the corresponding combined list or a literal default).\n\
+      - `help`: a user‑friendly help string.\n- `allowed_values`: an array listing\
+      \ permissible values; for the codec and numeric type flags, populate this array\
+      \ with the `codec` or `type` fields from the combined lists produced by the\
+      \ dependencies.\n\nInclude the following specific arguments:\n1. Help flag:\
+      \ short `-h`, long `--help`, boolean, required `false`, default `null`, help\
+      \ \"Displays usage information and exits.\".\n2. Input file: short `-i`, long\
+      \ `--input`, string, required `true`, default `null`, help \"Path to the binary\
+      \ input file to parse.\".\n3. Codec selector: short `-c`, long `--codec`, string,\
+      \ required `false`, default the first codec in `define_supported_codecs_combined`,\
+      \ help \"Codec used to decode the binary. Allowed values are the codec identifiers\
+      \ from the combined registry.\".\n4. Numeric type selector: short `-t`, long\
+      \ `--type`, string, required `false`, default the first numeric type in `define_supported_numeric_types_combined`,\
+      \ help \"Numeric type for interpreting payload data. Allowed values are the\
+      \ type identifiers from the combined registry.\".\n5. Verbosity: short `-v`,\
+      \ long `--verbose`, boolean, required `false`, default `false`, help \"Toggle\
+      \ verbose output.\".\n6. Output format: short `-o`, long `--output-format`,\
+      \ string, required `false`, default `json`, help \"Format of the parser’s output.\
+      \ Allowed values are `json`, `text`, `csv`.\".\n\nThe top‑level JSON object\
+      \ should look like:\n```json\n{\n  \"name\": \"binary_parser_cli\",\n  \"description\"\
+      : \"A concise specification for the binary parser CLI, generated from canonical\
+      \ codec and numeric type registries.\",\n  \"arguments\": [ ... ]\n}\n```\n\
+      Return only the JSON object, with no additional commentary or surrounding code.\n"
   design_command_line_interface_part2:
     agent: false
-    description: Specifies the second stage of a robust CLI for the binary parser,
-      detailing all flags, arguments, defaults, and help text in a machine‑readable
-      JSON format. The design incorporates dynamic codec and numeric type choices
-      from upstream nodes, enabling extensible and type‑safe parsing configurations.
+    description: Defines the second stage of a binary‑parser command‑line interface,
+      producing a validated, type‑safe JSON schema that enumerates all flags, positional
+      arguments, defaults, and help metadata. The spec integrates canonical codec
+      and numeric‑type catalogs from upstream nodes, enabling downstream tooling to
+      consume a complete, extensible configuration contract for the executable.
     name: design_command_line_interface_part2
     nodes_depended_on:
     - define_supported_codecs_combined
     - define_supported_numeric_types_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: CLI tool name
-      key: name
-      type: str
-    - description: CLI tool description
-      key: description
-      type: str
-    - description: JSON string representing the list of arguments
-      key: arguments_json
-      type: str
-    prompt: "Generate the second part of the command‑line interface (CLI) design for\
-      \ the binary parser binary. The specification must:\n\n1. **Include** a comprehensive\
-      \ help flag (`-h`/`--help`) that displays usage, argument descriptions, and\
-      \ defaults.\n2. **Define** a required positional argument for the input file\
-      \ (`input_file`), accepting a path to a binary data file.\n3. **Provide** an\
-      \ optional codec selector (`-c`/`--codec`) whose admissible values are the union\
-      \ of the two codec lists supplied by the dependencies `define_supported_codecs_combined`\
-      \ and `define_supported_numeric_types_combined`.\n4. **Allow** an optional numeric\
-      \ type selector (`-t`/`--type`) with choices from the combined numeric types\
-      \ list.\n5. **Add** a verbosity flag (`-v`/`--verbose`) that toggles progressive\
-      \ console output (boolean, default `false`).\n6. **Implement** an output format\
-      \ flag (`-o`/`--output-format`) accepting either `json` or `yaml`, defaulting\
-      \ to `json`.\n7. **Describe** each argument concisely with its short form, long\
-      \ form, requiredness, default value, type, and help text.\n8. **Output** the\
-      \ complete CLI definition as a JSON object containing the following structure:\n\
-      \   ```json\n   {\n     \"name\": \"binary_parser_cli\",\n     \"description\"\
-      : \"A lightweight CLI for the binary parser binary.\",\n     \"arguments\":\
-      \ [\n       {\n         \"flag\": \"-h, --help\",\n         \"short\": \"-h\"\
-      ,\n         \"long\": \"--help\",\n         \"required\": false,\n         \"\
-      default\": null,\n         \"type\": \"boolean\",\n         \"help\": \"Display\
-      \ help information and exit.\"\n       },\n       {\n         \"flag\": \"input_file\"\
-      ,\n         \"short\": null,\n         \"long\": null,\n         \"required\"\
-      : true,\n         \"default\": null,\n         \"type\": \"string\",\n     \
-      \    \"help\": \"Path to the binary file to parse.\"\n       },\n       {\n\
-      \         \"flag\": \"-c, --codec\",\n         \"short\": \"-c\",\n        \
-      \ \"long\": \"--codec\",\n         \"required\": false,\n         \"default\"\
-      : \"auto\",\n         \"type\": \"enum\",\n         \"help\": \"Select codec\
-      \ to decode; choices: <comma-separated list of combined codecs>.\"\n       },\n\
-      \       {\n         \"flag\": \"-t, --type\",\n         \"short\": \"-t\",\n\
-      \         \"long\": \"--type\",\n         \"required\": false,\n         \"\
-      default\": \"auto\",\n         \"type\": \"enum\",\n         \"help\": \"Specify\
-      \ numeric type for parsed values; choices: <comma-separated list of combined\
-      \ numeric types>.\"\n       },\n       {\n         \"flag\": \"-v, --verbose\"\
-      ,\n         \"short\": \"-v\",\n         \"long\": \"--verbose\",\n        \
-      \ \"required\": false,\n         \"default\": false,\n         \"type\": \"\
-      boolean\",\n         \"help\": \"Increase verbosity of runtime logs.\"\n   \
-      \    },\n       {\n         \"flag\": \"-o, --output-format\",\n         \"\
-      short\": \"-o\",\n         \"long\": \"--output-format\",\n         \"required\"\
-      : false,\n         \"default\": \"json\",\n         \"type\": \"enum\",\n  \
-      \       \"help\": \"Output format for parsed data; either json or yaml.\"\n\
-      \       }\n     ]\n   }\n   ```\n   Replace `<comma-separated list of combined\
-      \ codecs>` and `<comma-separated list of combined numeric types>` with the actual\
-      \ values produced by the dependent nodes.\n\nEnsure the JSON output is valid,\
-      \ well‑formatted, and can be parsed directly by downstream tooling."
+    prompt: "You are tasked with drafting the second stage of a robust command‑line\
+      \ interface (CLI) for the binary‑parser executable. Produce a **machine‑readable\
+      \ JSON schema** that fully describes every flag, positional argument, default,\
+      \ and help text. The design must integrate the canonical codec list from the\
+      \ node `define_supported_codecs_combined` and the numeric‑type list from `define_supported_numeric_types_combined`.\
+      \ \n\n**Requirements**:\n1. Include a comprehensive help option `-h`/`--help`\
+      \ that prints usage, descriptions, and defaults.\n2. Define a required positional\
+      \ argument `input_file` that accepts a filesystem path.\n3. Provide an optional\
+      \ codec selector `-c`/`--codec` whose admissible values are *all* codec identifiers\
+      \ from `define_supported_codecs_combined`. The default should be the string\
+      \ `auto`.\n4. Provide an optional numeric type selector `-t`/`--type` whose\
+      \ admissible values are *all* types from `define_supported_numeric_types_combined`.\
+      \ The default should be the string `auto`.\n5. Add a verbosity flag `-v`/`--verbose`\
+      \ (boolean, default `false`).\n6. Add an output format flag `-o`/`--output-format`\
+      \ accepting either `json` or `yaml` (default `json`).\n7. For each argument,\
+      \ include the following metadata fields:\n   * `flag` – combined short and long\
+      \ form or positional name;\n   * `short` – short form or `null`;\n   * `long`\
+      \ – long form or `null`;\n   * `required` – `true` or `false`;\n   * `default`\
+      \ – value or `null`;\n   * `type` – `boolean`, `string`, or `enum`;\n   * `help`\
+      \ – concise description.\n8. The output JSON must exactly match the following\
+      \ structure:\n\n```json\n{\n  \"name\": \"binary_parser_cli\",\n  \"description\"\
+      : \"A lightweight CLI for the binary parser binary.\",\n  \"arguments\": [\n\
+      \    {\n      \"flag\": \"-h, --help\",\n      \"short\": \"-h\",\n      \"\
+      long\": \"--help\",\n      \"required\": false,\n      \"default\": null,\n\
+      \      \"type\": \"boolean\",\n      \"help\": \"Display help information and\
+      \ exit.\"\n    },\n    {\n      \"flag\": \"input_file\",\n      \"short\":\
+      \ null,\n      \"long\": null,\n      \"required\": true,\n      \"default\"\
+      : null,\n      \"type\": \"string\",\n      \"help\": \"Path to the binary file\
+      \ to parse.\"\n    },\n    {\n      \"flag\": \"-c, --codec\",\n      \"short\"\
+      : \"-c\",\n      \"long\": \"--codec\",\n      \"required\": false,\n      \"\
+      default\": \"auto\",\n      \"type\": \"enum\",\n      \"help\": \"Select codec\
+      \ to decode; choices: <CODEC_LIST>.\"\n    },\n    {\n      \"flag\": \"-t,\
+      \ --type\",\n      \"short\": \"-t\",\n      \"long\": \"--type\",\n      \"\
+      required\": false,\n      \"default\": \"auto\",\n      \"type\": \"enum\",\n\
+      \      \"help\": \"Specify numeric type for parsed values; choices: <TYPE_LIST>.\"\
+      \n    },\n    {\n      \"flag\": \"-v, --verbose\",\n      \"short\": \"-v\"\
+      ,\n      \"long\": \"--verbose\",\n      \"required\": false,\n      \"default\"\
+      : false,\n      \"type\": \"boolean\",\n      \"help\": \"Increase verbosity\
+      \ of runtime logs.\"\n    },\n    {\n      \"flag\": \"-o, --output-format\"\
+      ,\n      \"short\": \"-o\",\n      \"long\": \"--output-format\",\n      \"\
+      required\": false,\n      \"default\": \"json\",\n      \"type\": \"enum\",\n\
+      \      \"help\": \"Output format for parsed data; either json or yaml.\"\n \
+      \   }\n  ]\n}\n```\n\n**Note**: Replace `<CODEC_LIST>` with a comma‑separated\
+      \ list of every codec identifier obtained from `define_supported_codecs_combined`.\
+      \ Replace `<TYPE_LIST>` with a comma‑separated list of every numeric type identifier\
+      \ from `define_supported_numeric_types_combined`. Ensure the resulting JSON\
+      \ is syntactically valid and contains no extraneous keys or comments.\n\nOutput\
+      \ ONLY the JSON object described above; do not add any surrounding text or commentary."
   document_command_line_tool_combined:
     agent: false
-    description: Performs a comprehensive synthesis of the two independently generated
-      CLI documentation fragments into a unified, authoritative reference guide. The
-      node ensures consistency, eliminates redundancy, resolves conflicting option
-      descriptions, and enriches the output with a structured table of contents, metadata
-      headers, and standardized formatting, producing a clean Markdown document ready
-      for release.
+    description: Consolidates the independently generated CLI documentation fragments
+      into a single, authoritative reference guide.  The node reconciles overlapping
+      sections, resolves conflicting option descriptions, standardizes Markdown formatting,
+      and enriches the output with a structured table of contents, metadata headers,
+      and release notes, producing a clean, production‑ready manual.
     name: document_command_line_tool_combined
     nodes_depended_on:
     - document_command_line_tool_part1
     - document_command_line_tool_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: The complete Markdown document with consolidated CLI documentation,
-        including metadata, table of contents, usage examples, options, and troubleshooting
-        sections.
-      key: markdown_content
-      type: str
-    - description: List of metadata headers included in the documentation, such as
-        version, build date, author, and license.
-      key: metadata_headers
-      type: List[str]
-    - description: List of section titles corresponding to the table of contents included
-        in the documentation.
-      key: section_titles
-      type: List[str]
-    - description: List of resolved conflicts between Part 1 and Part 2, detailing
-        which part's content was selected or merged.
-      key: conflict_resolutions
-      type: List[str]
-    prompt: 'Merge the outputs from Part 1 and Part 2 into a single, cohesive CLI
-      documentation file.
-
-
-      **Processing steps**:
-
-      1. Parse each section and identify duplicate sentences or overlapping option
-      descriptions.
-
-      2. Resolve conflicts by selecting the most recent or the most comprehensive
-      version of each option.
-
-      3. Generate a consolidated table of contents that lists all commands, options,
-      and sections.
-
-      4. Re‑format code fences, bullet lists, tables, and links to ensure consistent
-      Markdown syntax.
-
-      5. Append metadata headers (e.g., CLI Tool vX.Y, build date, author, license)
-      and a short release note.
-
-      6. Verify that usage examples, option tables, and troubleshooting sections are
-      complete and properly linked.
-
-
-      Return the final documentation as plain‑text Markdown.'
+    prompt: "Produce a single, unified Markdown documentation file that merges the\
+      \ two provided fragments.  \n\n**Processing steps**:\n1. **Parse** both fragments\
+      \ into logical sections (Overview, Syntax, Options, Examples, Troubleshooting,\
+      \ etc.).  \n2. **Identify duplicates** or overlapping option descriptions. \
+      \ \n3. **Resolve conflicts** by choosing the most recent or most detailed version;\
+      \ where ambiguity remains, include both with clear annotations.  \n4. **Generate\
+      \ a hierarchical table of contents** that lists all commands, sub‑commands,\
+      \ options, and major sections with correct Markdown link targets.  \n5. **Standardize\
+      \ formatting**:  \n   * Use consistent heading levels (`#`, `##`, `###`).  \n\
+      \   * Reformat all code fences, bullet lists, and tables to a single style.\
+      \  \n   * Ensure links are valid and use absolute URLs where appropriate.  \n\
+      6. **Append metadata** at the top:  \n   * `CLI Tool vX.Y`  \n   * Build date\
+      \ (ISO 8601)  \n   * Author, license, and a brief release note.  \n7. **Validate\
+      \ completeness**:  \n   * All examples must be runnable syntax.  \n   * Option\
+      \ tables include columns: Option, Short form, Default, Type, Description, Allowed\
+      \ values.  \n   * Troubleshooting section references the correct error codes.\
+      \  \n8. **Return** only the final Markdown document as plain text, ready for\
+      \ direct insertion into a README or manual page."
   document_command_line_tool_part1:
     agent: false
-    description: Generates the first, comprehensive section of the command‑line tool’s
-      user documentation, detailing usage syntax, option tables, codec and numeric
-      type support, real‑world examples, error handling, and practical troubleshooting
-      notes.
+    description: Generates the foundational, fully‑structured documentation segment
+      for a command‑line utility. It defines the tool’s role, usage syntax, flag table,
+      codec support, numeric argument handling, practical examples, common error scenarios
+      and troubleshooting guidance, and platform‑specific notes. The output is a ready‑to‑embed
+      Markdown string for inclusion in README files or man pages.
     name: document_command_line_tool_part1
     nodes_depended_on:
     - design_command_line_interface_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: Full markdown documentation string produced by the node.
-      key: documentation_text
-      type: str
-    prompt: 'Part 1: Create an exhaustive, professional‑grade documentation section
-      for the command‑line tool.
-
-
-      *Structure:*  Use clear Markdown‑style headings (e.g., `## Overview`, `### Usage`,
-      `#### Options`), tables for options/arguments, and bullet lists for notes.  Include
-      at least three realistic example invocations that cover typical use‑cases.
-
-
-      *Contents to cover:* 1. **Tool purpose & scope** – a concise description of
-      the tool’s functionality and target user base.
-
-      2. **Overall syntax** – the canonical command line pattern, including positional
-      arguments and optional flags.
-
-      3. **Detailed option list** – a table with columns: *Option*, *Short form*,
-      *Default*, *Type*, *Description*, *Allowed values*.  Mention supported codecs
-      (e.g., `mp3`, `aac`, `flac`) and numeric types (integers, floats, ranges) where
-      relevant.
-
-      4. **Examples** – at least three annotated command lines illustrating common
-      workflows (e.g., converting a file, processing a batch, applying a filter).
-
-      5. **Error handling** – common error messages and actionable troubleshooting
-      steps, including exit codes and hints for diagnosing failures.
-
-      6. **Notes** – special considerations (e.g., case sensitivity, platform differences,
-      dependency requirements).
-
-
-      *Output format:*  Return the documentation as plain text with proper line breaks
-      and indentation.  The output must be a single string that can be directly inserted
-      into a README or manual page.
-
-
-      *No other data should be returned.*'
+    prompt: "Part 1: Draft a complete, professional‑grade documentation block for\
+      \ the command‑line tool.\n\n**Structure**\n- Use Markdown headings (`##`, `###`,\
+      \ `####`), code fences for commands, and a table for the options list.\n- Ensure\
+      \ each section is clearly labeled and logically ordered.\n\n**Contents to include**\n\
+      1. **Tool purpose & scope** – a concise description of the tool’s functionality\
+      \ and the target user base.\n2. **Overall syntax** – the canonical command‑line\
+      \ pattern, with positional arguments and optional flags, shown in a code block.\n\
+      3. **Detailed options table** – columns: `Option`, `Short`, `Default`, `Type`,\
+      \ `Description`, `Allowed values`. Mention supported codecs (e.g., `mp3`, `aac`,\
+      \ `flac`) and numeric ranges where applicable.\n4. **Examples** – at least three\
+      \ annotated command lines (e.g., single‑file conversion, batch processing, applying\
+      \ a filter) each with comments explaining the workflow.\n5. **Error handling**\
+      \ – typical error messages, exit codes, and actionable troubleshooting steps.\n\
+      6. **Notes** – special considerations such as case sensitivity, platform differences,\
+      \ dependency requirements, and any platform‑specific flags.\n\n**Output format**\n\
+      - Return the documentation as a single plain‑text string with proper Markdown\
+      \ formatting and line breaks, ready to be inserted into a README or man page.\n\
+      \n**Deliverable**\n- A single string containing the full documentation section.\n\
+      \n**Example skeleton (to be replaced by the actual content)**\n```\n## Overview\n\
+      \nThe **<tool‑name>** is a versatile command‑line utility designed to ...\n\n\
+      ## Syntax\n\n```bash\n<tool‑name> [OPTIONS] <input> [<output>]\n```\n\n## Options\n\
+      \n| Option | Short | Default | Type | Description | Allowed values |\n|--------|-------|---------|------|-------------|----------------|\n\
+      | --codec | -c | mp3 | string | ... |\n... |\n\n## Examples\n\n1. Convert a\
+      \ single file:\n   ```bash\n   <tool‑name> -c flac -o output.flac input.mp3\n\
+      \   ```\n   ...\n\n## Error Handling\n\n- **Error 1**: `Invalid codec` – Ensure\
+      \ the codec is one of the supported types.\n  - Exit code: 2\n  - ...\n\n##\
+      \ Notes\n\n- The tool is case‑sensitive on Linux.\n- Requires libavcodec 59.0+.\n\
+      ```\n```\n"
   document_command_line_tool_part2:
     agent: false
-    description: Generates the second portion of the CLI tool documentation, including
-      explicit usage examples, a meticulous breakdown of options, supported codecs
-      and numeric types, and robust troubleshooting insights, designed to meet professional
-      developer and end‑user needs.
+    description: Generates the second portion of the comprehensive CLI tool documentation.
+      Building upon the introductory overview in Part 1, this node produces a meticulously
+      structured reference that includes explicit command syntax, an exhaustive table
+      of options (flags, parameters, and valid values), supported codecs and numeric
+      types, detailed input/output data formats, and a robust troubleshooting guide.
+      The documentation is formatted for clarity and adheres to industry best practices,
+      ensuring it serves professional developers and end‑users.
     name: document_command_line_tool_part2
     nodes_depended_on:
     - design_command_line_interface_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: Plain‑text Markdown documentation containing usage examples, option
-        details, supported codec and numeric type lists, and troubleshooting information.
-      key: documentation_text
-      type: str
-    prompt: 'Part 2: Write comprehensive and technically precise documentation for
-      the CLI tool. Ensure the content includes detailed usage examples with realistic
-      command-line invocations, an exhaustive explanation of each available option
-      (covering flags, parameters, and their permissible values), and an in-depth
-      summary of supported codecs, numeric types, and data formats. Additionally,
-      provide explicit troubleshooting guidance for common errors, addressing their
-      possible causes and step‑by‑step resolutions. Incorporate cross‑references to
-      related commands or configurations, if applicable, and structure the documentation
-      for clarity and professional technical formatting. Return the final documentation
-      text as plain text, adhering to best practices in CLI documentation.'
+    prompt: 'Part 2 – Documentation Generation:
+
+
+      Using the consolidated CLI specification produced by `design_command_line_interface_combined`,
+      compose a complete, professionally formatted documentation for the command‑line
+      tool. The output must be plain‑text and include the following structured sections:
+
+
+      1. **Synopsis** – Short command line usage with required and optional flags.
+
+      2. **Options** – A comprehensive table listing each flag (short and long forms),
+      parameter type, default value, whether required, and a concise help message.
+      Include permissible values where applicable.
+
+      3. **Usage Examples** – At least three realistic command‑line invocations that
+      illustrate common use cases (e.g., simple conversion, batch processing, advanced
+      codec selection). Show expected output snippets where relevant.
+
+      4. **Input / Output Formats** – Detailed description of supported file formats,
+      codecs, and numeric type encodings. Specify any constraints or compatibility
+      notes.
+
+      5. **Troubleshooting** – A section covering the most frequent runtime errors
+      or misconfigurations, with clear causes and step‑by‑step remediation steps.
+      Include links to relevant command references where appropriate.
+
+      6. **Related Commands / Configuration** – Cross‑references to other tool commands
+      or configuration files that interact with or affect this CLI.
+
+      7. **Appendix / Glossary** – Define any domain‑specific terms or abbreviations
+      used.
+
+
+      Ensure the documentation follows best practices for CLI manuals (consistent
+      syntax, clear indentation, and professional tone). Return only the plain‑text
+      documentation; do not include any explanatory comments.'
   finalize_binary_data_parser_combined:
     agent: false
-    description: Combines the two intermediate JSON package listings produced by the
-      Part 1 and Part 2 nodes into a single, deduplicated manifest, validates file
-      integrity via SHA‑256 checksums, and packages all assets into a distributable
-      ZIP archive. The resulting package includes a complete README, test harness,
-      and install script, ready for distribution or deployment.
+    description: Combines the two intermediate JSON package manifests from Part 1
+      and Part 2 into a single, deduplicated manifest, validates every asset via SHA‑256
+      checksums and MIME type determination, and assembles a complete distributable
+      ZIP archive. The package includes a generated `manifest.json`, a top‑level README,
+      a test harness, and an install script, all ready for upload or deployment.
     name: finalize_binary_data_parser_combined
     nodes_depended_on:
     - finalize_binary_data_parser_part1
     - finalize_binary_data_parser_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: The absolute path to the created ZIP archive.
-      key: zip_archive_path
-      type: str
-    - description: A list of all file paths included in the ZIP archive.
-      key: manifest_files
-      type: List[str]
-    - description: A list of file sizes (in bytes) corresponding to each file in the
-        manifest.
-      key: file_sizes
-      type: List[int]
-    - description: A list of SHA‑256 checksums for each file in the archive.
-      key: file_checksums
-      type: List[str]
-    prompt: '1. Load the two JSON package manifests generated by Part 1 and Part 2.
-
-      2. Merge the manifest entries into a single list, deduplicating file paths by
-      keeping the entry from Part 2 in case of conflict.
-
-      3. For each file entry, read the corresponding binary or text content, compute
-      its SHA‑256 checksum, and embed the checksum, file size, and MIME type into
-      a unified `manifest.json`.
-
-      4. Create a new ZIP archive named `binary-data-parser-<version>.zip`, inserting
-      every file from the merged manifest with its relative path, and include the
-      generated `manifest.json`.
-
-      5. Add a top‑level `README.md` that contains installation, usage, and test execution
-      instructions.
-
-      6. Verify that the archive contains a `setup.py` (or `pyproject.toml`) that
-      declares the required dependencies (`argparse`, `unittest`, etc.) and that `python
-      -m unittest` can be run against the bundled tests.
-
-      7. Output the absolute path to the created ZIP and a concise JSON summary of
-      its contents (file paths, sizes, checksums).'
+    prompt: "1️⃣ **Load manifests** – Read the two JSON files output by *finalize_binary_data_parser_part1*\
+      \ and *finalize_binary_data_parser_part2*.\n\n2️⃣ **Merge & deduplicate** –\
+      \ Combine the file‑entry arrays into a single list. When a file path appears\
+      \ in both manifests, retain the entry from Part 2; otherwise keep the original.\n\
+      \n3️⃣ **Compute integrity data** – For each file entry:\n   * Read the file\
+      \ contents from the repository.\n   * Compute a SHA‑256 checksum.\n   * Determine\
+      \ the MIME type (e.g., via `mimetypes` or `python-magic`).\n   * Record the\
+      \ file size in bytes.\n\n4️⃣ **Create unified manifest** – Emit a new `manifest.json`\
+      \ at the root of the package containing an array of objects with the keys `path`,\
+      \ `size`, `sha256`, and `mime`.\n\n5️⃣ **Package into ZIP** – Construct a ZIP\
+      \ archive named `binary-data-parser‑<version>.zip` (replace `<version>` with\
+      \ the version string from the manifests). Add every file referenced in the merged\
+      \ manifest to the ZIP at its relative path, together with the generated `manifest.json`.\n\
+      \n6️⃣ **Add top‑level README** – Include a `README.md` that covers:\n   * Installation\
+      \ (`pip install .` or `pip install binary-data-parser`).\n   * Quick‑start usage\
+      \ examples.\n   * How to run the bundled test suite (`python -m unittest`).\n\
+      \n7️⃣ **Verify packaging metadata** – Ensure the archive contains a `setup.py`\
+      \ or `pyproject.toml` declaring the runtime dependencies (`argparse`, `unittest`,\
+      \ etc.) and that executing `python -m unittest` against the bundled tests passes.\n\
+      \n8️⃣ **Output results** – Provide:\n   * The absolute path to the created ZIP.\n\
+      \   * A concise JSON summary: an array of objects `{path, size, sha256}` reflecting\
+      \ the archive contents.\n\n**Do not output any additional explanatory text.**"
   finalize_binary_data_parser_part1:
     agent: false
-    description: Assembles the integrated binary data parser module, its associated
-      unit tests, and full command‑line documentation into a self‑contained, installable
-      Python package. The node produces a JSON representation of the package file
-      hierarchy, including source code, tests, documentation, metadata, and a README,
-      ensuring the resulting distribution can be built with `python -m build` and
-      tested via `python -m unittest`.
+    description: Creates a fully packaged, installable Python distribution of the
+      binary data parser by collating source code, unit tests, documentation, licensing,
+      and metadata into a cohesive file hierarchy. The node emits a JSON mapping of
+      all package files, enabling downstream build and deployment processes to consume
+      a ready‑to‑install wheel and source archive.
     name: finalize_binary_data_parser_part1
     nodes_depended_on:
     - integrate_parsing_logic_combined
     - write_test_cases_combined
     - document_command_line_tool_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: List of relative file paths included in the package.
-      key: file_paths
-      type: List[str]
-    - description: List of file contents corresponding to each path in 'file_paths',
-        encoded as UTF-8 strings.
-      key: file_contents
-      type: List[str]
-    prompt: "## 1️⃣ Create the first segment of the distribution package\n\n1. **Collect\
-      \ source files** – Import the fully integrated parser module from *integrate_parsing_logic_combined*\
-      \ and place it under `src/parser/__init__.py`. The module should expose a `main()`\
-      \ entry‑point for the CLI.\n\n2. **Generate unit‑test module** – Consume the\
-      \ JSON array from *write_test_cases_combined* and write a `tests/test_parser.py`\
-      \ file that imports `unittest` and programmatically constructs `TestCase` subclasses\
-      \ for each test definition. Each test must assert expected outputs or error\
-      \ conditions.\n\n3. **Merge documentation** – Take the consolidated text from\
-      \ *document_command_line_tool_combined*, split it into logical sections, and\
-      \ place it under `docs/COMMAND_LINE.md`. Additionally generate a `docs/USAGE.md`\
-      \ that contains a quick‑start guide.\n\n4. **Create a README** – Compose a `README.md`\
-      \ that includes:\n   * Installation: `pip install .` or `python -m pip install\
-      \ .`\n   * Usage: `python -m binary_data_parser [options] input_file`\n   *\
-      \ Test execution: `python -m unittest discover -s tests`\n   * License and contribution\
-      \ guidelines.\n\n5. **Define packaging metadata** – Produce a `pyproject.toml`\
-      \ (PEP 621) that declares:\n   * `name = \"binary-data-parser\"`\n   * `version\
-      \ = \"0.1.0\"`\n   * `requires-python = \">=3.9\"`\n   * `dependencies = [\"\
-      click\", \"pandas\"]` (replace with actual runtime deps).\n   * `build-backend\
-      \ = \"setuptools.build_meta\"`\n   * `tool.setuptools.packages.find` to discover\
-      \ `src`.\n   * `tool.setuptools.package-data` to include `docs/*`.\n\n6. **Add\
-      \ a license and .gitignore** – Include a standard MIT license (`LICENSE`) and\
-      \ a `.gitignore` that excludes `__pycache__`, `.DS_Store`, and `tests/__pycache__`.\n\
-      \n7. **Package the artifact** – Run `python -m build --sdist --wheel` to create\
-      \ a source distribution (`.tar.gz`) and wheel (`.whl`). Ensure that both artifacts\
-      \ can be installed locally via `pip install .` and that `python -m unittest\
-      \ discover -s tests` passes without errors.\n\n8. **Output the archive contents\
-      \ as JSON** – Return a JSON object mapping each relative file path (e.g., `src/parser/__init__.py`)\
-      \ to its UTF‑8 string content. Escape newlines and special characters appropriately.\
-      \ The output must be valid JSON and should *not* contain any extraneous keys.\n\
-      \n**Deliverable**: A single JSON document representing the complete package\
-      \ tree, ready for the next packaging stage.\n\n**Technical validation**: Verify\
-      \ that:\n   * `python -m pip install .` succeeds.\n   * `python -m unittest\
-      \ discover -s tests` returns `OK`.\n   * The wheel can be installed from the\
-      \ build directory without network access.\n\nReturn only the JSON mapping of\
-      \ file paths to contents. Do *not* output any additional explanatory text."
+    prompt: "## 1️⃣ Assemble the first segment of the distribution package\n\n1. **Source\
+      \ integration** – Import the fully‑merged parser from *integrate_parsing_logic_combined*\
+      \ and expose it as `src/parser/__init__.py`. The module must provide a `main()`\
+      \ function that serves as the CLI entry point.\n\n2. **Unit‑test generation**\
+      \ – Consume the JSON array from *write_test_cases_combined* and create `tests/test_parser.py`.\
+      \ For each test definition, programmatically generate a `unittest.TestCase`\
+      \ subclass that asserts either the expected output or an anticipated exception.\n\
+      \n3. **Documentation consolidation** – Merge the text from *document_command_line_tool_combined*,\
+      \ split it into logical sections, and write `docs/COMMAND_LINE.md`. Additionally\
+      \ produce `docs/USAGE.md` containing a concise, step‑by‑step quick‑start guide.\n\
+      \n4. **README creation** – Draft `README.md` with the following subsections:\n\
+      \   - **Installation** – `pip install .` or `python -m pip install .`\n   -\
+      \ **Usage** – `python -m binary_data_parser [options] input_file`\n   - **Testing**\
+      \ – `python -m unittest discover -s tests`\n   - **License & Contributing**\
+      \ – reference to `LICENSE` and a short contribution guide.\n\n5. **Packaging\
+      \ metadata** – Write a `pyproject.toml` (PEP 621) that defines:\n   ```toml\n\
+      \   [project]\n   name = \"binary-data-parser\"\n   version = \"0.1.0\"\n  \
+      \ requires-python = \">=3.9\"\n   dependencies = [\"click\", \"pandas\"]\n\n\
+      \   [build-system]\n   requires = [\"setuptools>=64\", \"wheel\"]\n   build-backend\
+      \ = \"setuptools.build_meta\"\n\n   [tool.setuptools.packages.find]\n   where\
+      \ = [\"src\"]\n\n   [tool.setuptools.package-data]\n   parser = [\"**/*.md\"\
+      , \"docs/*\"]\n   ```\n   Ensure that the package data includes all documentation\
+      \ files.\n\n6. **License and ignore rules** – Add a standard MIT `LICENSE` and\
+      \ a `.gitignore` that excludes `__pycache__`, `.DS_Store`, `tests/__pycache__`,\
+      \ and any build artifacts.\n\n7. **Build artifacts** – Execute:\n   ```bash\n\
+      \   python -m build --sdist --wheel\n   ```\n   Verify that:\n   - `dist/*.tar.gz`\
+      \ and `dist/*.whl` can be installed locally with `pip install .`.\n   - `python\
+      \ -m unittest discover -s tests` passes without errors.\n\n8. **Output** – Return\
+      \ a **single JSON object** mapping each relative file path (e.g., `src/parser/__init__.py`)\
+      \ to its UTF‑8 string content. Escape newlines and special characters as required.\
+      \ The JSON must contain **only** the file‑path keys and their corresponding\
+      \ content strings—no additional metadata or keys.\n\n**Deliverable**: A pristine\
+      \ JSON document representing the complete package tree, ready for the next packaging\
+      \ step.\n"
   finalize_binary_data_parser_part2:
     agent: false
-    description: Builds a fully packaged distribution of the binary data parser tool,
-      integrating the merged parser script, test suite, and documentation into a structured
-      source tree. Generates `README.md`, `requirements.txt`, `pyproject.toml`, and
-      `setup.cfg` to enable building a wheel or source distribution. Outputs the complete
-      archive contents as a JSON mapping of file paths to their contents, ensuring
-      that the package can be installed and verified by running `python -m unittest`.
+    description: Creates a fully packaged Python source distribution for the binary
+      data parser tool. The node consumes the merged parser implementation, consolidated
+      test suite, and unified CLI documentation to scaffold a clean project layout,
+      generate packaging metadata, and package the source tree into a JSON mapping
+      of file paths to content. The resulting archive is fully compliant with PEP 517/518,
+      supports wheel and source distribution via `build`, and is immediately installable
+      and testable with standard tooling (`pip install .`, `python -m unittest`).
     name: finalize_binary_data_parser_part2
     nodes_depended_on:
     - integrate_parsing_logic_combined
     - write_test_cases_combined
     - document_command_line_tool_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: List of all relative file paths included in the distribution package.
-      key: file_paths
-      type: List[str]
-    - description: List of file contents corresponding to the file paths, containing
-        the exact content of each file in UTF-8 format.
-      key: file_contents
-      type: List[str]
-    - description: Indicates whether the final package successfully passed validation
-        steps, including `python -m build` and `python -m unittest`.
-      key: validation_status
-      type: bool
-    prompt: "Using the fully merged parser script from **integrate_parsing_logic_combined**,\
-      \ the consolidated test suite from **write_test_cases_combined**, and the unified\
-      \ documentation from **document_command_line_tool_combined**, build a ready‑to‑distribute\
-      \ source package for the binary data parser tool. Your output must:\n\n1. Create\
-      \ a clean project layout:\n   - `src/binary_parser/__init__.py`\n   - `src/binary_parser/parser.py`\
-      \ – containing the integrated parsing logic.\n   - `tests/test_parser.py` –\
-      \ containing all merged test cases (the JSON array from write_test_cases_combined\
-      \ should be converted into valid `unittest` test methods).\n   - `docs/usage.md`\
-      \ – the combined documentation.\n   - `README.md` – a concise guide that includes:\n\
-      \     * Installation instructions (`pip install .` or `pip install binary_parser`).\n\
-      \     * Quick‑start usage examples.\n     * Instructions for running the test\
-      \ suite (`python -m unittest`).\n   - `requirements.txt` – list all runtime\
-      \ dependencies required by the parser.\n   - `pyproject.toml` – a minimal modern\
-      \ build configuration using `setuptools.build_meta`.\n   - `setup.cfg` – project\
-      \ metadata (name, version, description, author, license, console entry point).\n\
-      \   - Optional `.gitignore` and `MANIFEST.in` for source distribution.\n2. Ensure\
-      \ that the console entry point `binary-parser` is defined to invoke the parser’s\
-      \ CLI.\n3. Assemble the entire directory tree into a JSON object where each\
-      \ key is a relative file path and each value is the exact file content.\n4.\
-      \ The JSON output should be a single object, not wrapped in an array.\n5. Validate\
-      \ that the final package can be built with `python -m build` and that `python\
-      \ -m unittest` passes all tests.\n\nProvide only the JSON representation of\
-      \ the archive contents as the final answer."
+    prompt: "Using the outputs of **integrate_parsing_logic_combined**, **write_test_cases_combined**,\
+      \ and **document_command_line_tool_combined**, produce a fully packaged source\
+      \ distribution for the binary data parser tool. The specification requires:\n\
+      \n1. **Project scaffolding** – Create a pristine directory layout with the following\
+      \ files:\n   - `src/binary_parser/__init__.py` (empty or simple version string)\n\
+      \   - `src/binary_parser/parser.py` – containing the merged parsing implementation.\n\
+      \   - `src/binary_parser/cli.py` – a thin wrapper exposing the CLI entry point\
+      \ `binary-parser` that delegates to the parser module.\n   - `tests/test_parser.py`\
+      \ – generated by translating each test case in the JSON array from **write_test_cases_combined**\
+      \ into a `unittest.TestCase` subclass, preserving `input_bytes`, `expected_output`,\
+      \ and `expected_error`.\n   - `docs/usage.md` – the unified Markdown documentation\
+      \ from **document_command_line_tool_combined**.\n   - `README.md` – a concise\
+      \ guide with installation (`pip install .` / `pip install binary_parser`), a\
+      \ quick‑start example, and instructions to run the test suite (`python -m unittest`).\n\
+      \   - `requirements.txt` – list all runtime dependencies required by the parser\
+      \ (e.g., `argparse`, `typing`, any codec libraries).\n   - `pyproject.toml`\
+      \ – a minimal PEP 517 build configuration using `setuptools.build_meta`.\n \
+      \  - `setup.cfg` – project metadata (name `binary_parser`, version `0.1.0`,\
+      \ description, author, license, and console script entry point `binary-parser\
+      \ = binary_parser.cli:main`).\n   - Optional `.gitignore` and `MANIFEST.in`\
+      \ for source distribution.\n2. **Console entry point** – Define `binary-parser`\
+      \ in `setup.cfg` that imports `binary_parser.cli` and calls its `main()` function.\n\
+      3. **Packaging** – Ensure the directory tree can be built into a wheel and source\
+      \ distribution with `python -m build`.\n4. **Testing** – The package must pass\
+      \ all tests when executed with `python -m unittest`. No test should fail.\n\
+      5. **Output format** – Assemble the entire directory tree into a JSON object\
+      \ where each key is a relative file path and each value is the exact file content.\
+      \ The JSON object must be a single, flat mapping (no nested objects) and must\
+      \ not contain any extraneous keys.\n6. **Validation** – Assume a downstream\
+      \ process will validate that the package can be built and the tests run successfully.\
+      \ The generated JSON must be ready for that validation.\n\nProvide **only**\
+      \ the JSON mapping of file paths to contents as the final output."
   implement_codec_parsing_logic_combined:
     agent: false
-    description: Consolidates the two partial codec parsing modules into a single,
-      unified implementation that provides a dispatcher for decoding binary data across
-      all supported codecs while resolving duplicate definitions, standardizing error
-      handling, and offering comprehensive type hints and documentation.
+    description: 'Consolidates the two partial codec parsing modules generated by
+      `implement_codec_parsing_logic_part1` and `implement_codec_parsing_logic_part2`
+      into a single, fully‑featured decoding library. The combined implementation
+      eliminates duplicate decoder functions by refactoring or renaming, constructs
+      a central registry of decoder callables, and provides a dispatcher `decode(codec_name:
+      str, data: bytes) -> Any` that performs lookup, error handling, and execution.
+      Custom exception classes `CodecNotFoundError` and `CodecDecodeError` supply
+      clear error reporting. All functions include comprehensive type hints, PEP‑8
+      compliant imports, and detailed docstrings, making the module self‑contained
+      and immediately importable by downstream nodes without external dependencies.'
     name: implement_codec_parsing_logic_combined
     nodes_depended_on:
     - implement_codec_parsing_logic_part1
     - implement_codec_parsing_logic_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: A list of all the codec names supported by the consolidated module.
-      key: supported_codecs
-      type: List[str]
-    - description: List of decoder function names registered in the module for handling
-        supported codecs.
-      key: decoder_registry_names
-      type: List[str]
-    - description: Indicates whether all supported codecs have been tested with unit
-        tests in the module.
-      key: test_coverage_status
-      type: bool
-    - description: List of example error messages defined in the module (e.g., for
-        unsupported codecs or decoding failures).
-      key: error_messages_preview
-      type: List[str]
-    prompt: 'Produce a single, cohesive Python module that merges the two partial
-      codec parsing implementations from Part 1 and Part 2. Resolve any duplicate
-      function names by refactoring or renaming, ensuring that each codec has a distinct
-      decoder function. Construct a central dispatcher function `decode(codec_name:
-      str, data: bytes) -> Any` that looks up the appropriate decoder in a registry
-      dictionary and returns the decoded result. Include robust error handling: define
-      a `CodecNotFoundError` for unknown codec names and a `CodecDecodeError` for
-      failures during decoding, propagating these exceptions with clear messages.
-      Add comprehensive type hints (using `typing`), PEP‑8 compliant imports, and
-      detailed docstrings that describe the purpose, parameters, return values, and
-      potential exceptions. Ensure that the module can be imported by downstream nodes
-      without additional dependencies. The output should be a ready‑to‑use Python
-      file containing all imports, exception classes, individual decoder functions,
-      the registry, and the dispatcher.'
+    prompt: "Create a single, self‑contained Python module that merges the codec parsing\
+      \ implementations from the two partial modules `implement_codec_parsing_logic_part1.py`\
+      \ and `implement_codec_parsing_logic_part2.py`. The combined module must:\n\n\
+      1. **Imports** only standard‑library packages required for decoding (e.g., `codecs`,\
+      \ `base64`, `binascii`, `gzip`, `zlib`, `bz2`, `lzma`, `logging`, `typing`).\n\
+      2. **Detect and Resolve Duplicates** – Identify any decoder functions with identical\
+      \ names across the two source modules and rename or refactor them so each codec\
+      \ has a unique `decode_<codec>` function.\n3. **Custom Exceptions** – Define\
+      \ two exception classes:\n   - `CodecNotFoundError` (subclass of `KeyError`)\
+      \ raised when an unknown codec name is requested.\n   - `CodecDecodeError` (subclass\
+      \ of `Exception`) raised when a decoder fails to process the input data.\n4.\
+      \ **Registry** – Build a module‑level `DECODER_REGISTRY: Dict[str, Callable[[bytes],\
+      \ Any]]` that maps codec names to the corresponding decoder functions.\n5. **Dispatcher**\
+      \ – Implement `def decode(codec_name: str, data: bytes) -> Any` that:\n   -\
+      \ Looks up `codec_name` in `DECODER_REGISTRY`.\n   - Calls the associated decoder\
+      \ function.\n   - Wraps any decoding errors in `CodecDecodeError` with a clear\
+      \ message.\n   - Raises `CodecNotFoundError` if the codec is not present in\
+      \ the registry.\n6. **Docstrings & Type Hints** – Provide clear, PEP‑8‑compliant\
+      \ docstrings for the module, exception classes, each decoder, the registry,\
+      \ and the dispatcher. Include type hints using the `typing` module (e.g., `Callable`,\
+      \ `Dict`, `Any`).\n7. **Public API** – Define `__all__` to list all public names:\
+      \ the exception classes, the registry, the dispatcher, and every decoder function.\n\
+      8. **No External Dependencies** – Ensure the file can be imported by downstream\
+      \ nodes without requiring any third‑party packages.\n\nReturn the complete Python\
+      \ source code as a single file, ready for copy‑and‑paste. Do not include any\
+      \ explanatory commentary outside of the code.\n"
   implement_codec_parsing_logic_part1:
     agent: false
-    description: Generates a robust, extensible codec decoding module that translates
-      binary payloads into human‑readable or structured data for every codec specified
-      in the consolidated codec list. The implementation includes a registry, type‑annotated
-      decoder functions, comprehensive error handling, and a minimal unit‑test suite
-      to verify correctness and failure modes.
+    description: Generates a comprehensive, extensible codec decoding library that
+      transforms binary payloads into structured data for every codec defined by the
+      consolidated codec registry. The implementation provides a type‑annotated decoder
+      registry, robust error handling via a custom exception, a dispatcher function,
+      and a lightweight test harness to verify correctness and failure modes.
     name: implement_codec_parsing_logic_part1
     nodes_depended_on:
     - define_supported_codecs_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: List of codec names that are supported and available for decoding
-        binary input streams.
-      key: supported_codecs
-      type: List[str]
-    - description: List of decoder registry entries; each entry identifies a codec
-        and its associated decoding callable function.
-      key: decoder_registry
-      type: List[str]
-    - description: Results of the unit tests (pass/fail) for verifying the decoders
-        and error handling across various supported codecs.
-      key: test_results
-      type: List[bool]
-    - description: List of error messages captured during testing, indicating issues
-        with specific codecs or input cases.
-      key: error_messages
-      type: List[str]
-    prompt: "### Implementation Goal\nCreate a fully‑featured, type‑annotated Python\
-      \ module that decodes binary input streams for every codec listed in the consolidated\
-      \ codec definition produced by **define_supported_codecs_combined**. The module\
-      \ must:\n\n1. **Import** only standard‑library packages (`codecs`, `base64`,\
-      \ `binascii`, `gzip`, `zlib`, `bz2`, `lzma`, `logging`, `typing`).\n2. **Build**\
-      \ a dynamic `DECODER_REGISTRY: Dict[str, Callable[[bytes], Any]]` mapping codec\
-      \ names to decoding callables.\n3. **Implement** a dedicated decoder for each\
-      \ supported codec. Each decoder should:\n   - Accept a `bytes` object.\n   -\
-      \ Return the decoded data as `str` (for textual codecs) or the most appropriate\
-      \ Python data structure (e.g., `bytes`, `int`).\n   - Raise a custom `CodecDecodeError`\
-      \ with a clear, descriptive message if decoding fails or if the input is malformed.\n\
-      4. **Provide** a generic `decode_bytes(codec_name: str, data: bytes) -> Any`\
-      \ function that looks up the appropriate decoder, logs the operation, and returns\
-      \ the decoded value.\n5. **Include** comprehensive docstrings for every function,\
-      \ a minimal test suite using `unittest` that verifies successful decoding for\
-      \ at least three common codecs (`utf-8`, `base64`, `gzip`), and an error‑path\
-      \ test for an unsupported codec.\n6. **Expose** the registry and helper functions\
-      \ as part of the module’s public API.\n\n### Deliverable\nReturn a single, self‑contained\
-      \ Python file (or code snippet) containing the full implementation, including\
-      \ imports, exception definitions, decoder registry, individual decoders, the\
-      \ dispatcher, and the test harness. Ensure that the code compiles and that the\
-      \ test suite passes when executed.\n\n### Example Skeleton (to be completed)\n\
-      ```python\nimport codecs\nimport base64\nimport binascii\nimport gzip\nimport\
-      \ zlib\nimport bz2\nimport lzma\nimport logging\nfrom typing import Any, Callable,\
-      \ Dict\n\n# Custom exception, registry, decoders, dispatcher, tests...\n```"
+    prompt: "### Implementation Objective\nCreate a **stand‑alone, type‑annotated\
+      \ Python module** that, for every codec enumerated by the *define_supported_codecs_combined*\
+      \ parent node, can translate an opaque binary payload into a human‑readable\
+      \ string, structured data, or raw bytes. The module must:\n\n1. **Import** exclusively\
+      \ from the standard library (`codecs`, `base64`, `binascii`, `gzip`, `zlib`,\
+      \ `bz2`, `lzma`, `logging`, `typing`).\n2. **Expose** a public `DECODER_REGISTRY:\
+      \ Dict[str, Callable[[bytes], Any]]` mapping codec identifiers to decoding callables.\n\
+      3. **Implement** a dedicated decoder for each supported codec. Each decoder\
+      \ should:\n   - Accept a `bytes` instance.\n   - Return the decoded representation\
+      \ (`str` for textual codecs; `bytes`, `int`, or other appropriate Python objects\
+      \ for binary codecs).\n   - Raise a custom `CodecDecodeError` with a concise,\
+      \ actionable message whenever decoding fails or the input is malformed.\n4.\
+      \ **Provide** a generic dispatcher function `decode_bytes(codec_name: str, data:\
+      \ bytes) -> Any` that:\n   - Validates `codec_name` against the registry.\n\
+      \   - Delegates to the appropriate decoder.\n   - Logs the operation at `INFO`\
+      \ level with a unique request ID.\n   - Reraises `CodecDecodeError` for unsupported\
+      \ codecs.\n5. **Add** comprehensive, machine‑readable docstrings for every public\
+      \ symbol.\n6. **Include** a minimal `unittest` suite that:\n   - Verifies successful\
+      \ decoding for at least **three** common codecs (e.g., `utf-8`, `base64`, `gzip`).\n\
+      \   - Tests the error path by attempting to decode with an unsupported codec.\n\
+      \   - Asserts that the correct exception type and message are produced.\n7.\
+      \ **Ensure** that the module is importable without side‑effects and that the\
+      \ registry and helper functions are part of the public API.\n\nThe final deliverable\
+      \ should be a **single, self‑contained Python source file** ready for integration\
+      \ with downstream parsing pipelines. All code must compile under Python 3.11+,\
+      \ and the unit tests must pass when executed with `python -m unittest`.\n"
   implement_codec_parsing_logic_part2:
     agent: false
-    description: 'Creates a fully‑functional, type‑annotated Python module that decodes
-      binary streams for every codec specified by the preceding `define_supported_codecs_combined`
-      node. Each codec is represented by a dedicated `decode_<name>` function that
-      accepts a `bytes` payload and returns either a decoded string, structured object,
-      or a custom exception on failure. The module also exposes a dispatcher `decode(codec_name:
-      str, data: bytes)` to centralise lookup and error handling, facilitating seamless
-      integration with downstream consumers.'
+    description: Builds a comprehensive, type‑annotated decoding library that dynamically
+      generates codec‑specific decoder functions from the canonical registry produced
+      by `define_supported_codecs_combined`. Each decoder is fully documented, robustly
+      validates input, and integrates into a centralized dispatcher, providing a clean,
+      PEP‑8 compliant API for downstream consumers.
     name: implement_codec_parsing_logic_part2
     nodes_depended_on:
     - define_supported_codecs_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: List of codec names for which dedicated decoding functions were
-        created.
-      key: codec_names
-      type: List[str]
-    - description: List of codec names successfully decoded by the created functions
-        in tests.
-      key: decoded_successes
-      type: List[str]
-    - description: List of codec names where decoding failed during validation or
-        testing.
-      key: decode_failures
-      type: List[str]
-    - description: Indicates whether all decoding functions have complete and accurate
-        docstrings.
-      key: docstring_compliance
-      type: bool
-    - description: Flag that denotes if minimal unit-test examples are provided for
-        all defined codecs.
-      key: test_coverage_compliance
-      type: bool
-    prompt: "You are provided with a JSON list of supported codec names from the prior\
-      \ node `define_supported_codecs_combined`. Write a complete, self‑contained\
-      \ Python module that:\n\n1. Imports only standard libraries required for decoding\
-      \ (e.g., `struct`, `codecs`, `base64`, `json`, `zlib`).\n2. For each codec name\
-      \ in the list, defines a function `decode_<codec>(data: bytes) -> Any` with\
-      \ a clear docstring describing the expected input, output, and error semantics.\
-      \ Each function should:\n   - Perform the appropriate decoding logic specific\
-      \ to its codec.\n   - Handle malformed or insufficient data gracefully by raising\
-      \ a custom `DecodingError` with a descriptive message.\n   - Return the decoded\
-      \ value (string, dict, list, or bytes) without altering the original `data`\
-      \ buffer.\n3. Introduces a `DecodingError` exception class inheriting from `Exception`.\n\
-      4. Implements a dispatcher `def decode(codec_name: str, data: bytes) -> Any`\
-      \ that:\n   - Looks up the codec in a mapping.\n   - Calls the corresponding\
-      \ `decode_<codec>`.\n   - Returns the result or propagates `DecodingError`.\n\
-      5. Includes type hints, `__all__` definition, and minimal unit‑test examples\
-      \ (commented out) for each codec.\n6. Produces well‑structured, PEP‑8 compliant\
-      \ code ready to be copied into a `.py` file.\n\nReturn only the Python code\
-      \ block, without any surrounding explanation. Ensure that the implementation\
-      \ can be imported directly and that it respects the codec list generated by\
-      \ the previous node."
+    prompt: "You will receive a JSON array emitted by the upstream node `define_supported_codecs_combined`.\
+      \ Each element is an object with the fields `codec` (string) and `description`\
+      \ (string). Your task is to generate a self‑contained, PEP‑8 compliant Python\
+      \ module that fulfills the following requirements:\n\n1. **Imports** – Use only\
+      \ the Python Standard Library (e.g., `struct`, `codecs`, `base64`, `json`, `zlib`,\
+      \ `gzip`, `binascii`).\n2. **Exception Class** – Define a custom exception `DecodingError(Exception)`\
+      \ that carries a descriptive message.\n3. **Decoders** – For every `codec` value\
+      \ in the input array, create a dedicated function `decode_<codec>(data: bytes)\
+      \ -> Any`. The function must:\n   - Be fully type‑annotated.\n   - Contain a\
+      \ clear, concise docstring that explains the expected input, the nature of the\
+      \ output, and the failure conditions.\n   - Perform the decoding logic appropriate\
+      \ for that codec.\n   - Validate the input; on malformed or insufficient data,\
+      \ raise `DecodingError` with a helpful error message.\n   - Return the decoded\
+      \ value unchanged from the original buffer (i.e., no in‑place mutation).\n4.\
+      \ **Dispatcher** – Implement a function `decode(codec_name: str, data: bytes)\
+      \ -> Any` that:\n   - Builds a lookup dictionary mapping codec names to the\
+      \ corresponding decoder functions.\n   - Invokes the correct decoder based on\
+      \ `codec_name`.\n   - Raises `DecodingError` if the codec is unknown.\n5. **Metadata**\
+      \ – Declare `__all__` to expose only the public API (`DecodingError`, `decode`,\
+      \ and all `decode_<codec>` functions).\n6. **Type Hints & Static Analysis**\
+      \ – Include precise type annotations and import `typing` modules as needed.\n\
+      7. **Unit‑Test Skeleton** – Provide minimal, commented‑out unit‑test examples\
+      \ (using `unittest` or `pytest`) for each codec to illustrate expected usage.\n\
+      8. **Documentation** – The module itself should be a clean, well‑structured\
+      \ file ready for direct import.\n\nThe final output should be the complete Python\
+      \ source code inside a single code block, with no surrounding commentary. The\
+      \ generated module must be importable directly and must rely solely on the codec\
+      \ list supplied by the preceding node.\n\n**Example Output Skeleton (to be completed\
+      \ by you):**\n```python\n# Decoding module for supported codecs\n# Generated\
+      \ from define_supported_codecs_combined\n\nimport ...\n\nclass DecodingError(Exception):\n\
+      \    ...\n\ndef decode_<codec>(data: bytes) -> ...:\n    ...\n\ndef decode(codec_name:\
+      \ str, data: bytes) -> ...:\n    ...\n\n__all__ = [\n    \"DecodingError\",\n\
+      \    \"decode\",\n    \"decode_<codec>\",\n    ...\n]\n\n# # Unit tests\n# import\
+      \ unittest\n# class TestDecoders(unittest.TestCase):\n#     def test_<codec>(self):\n\
+      #         ...\n# if __name__ == \"__main__\":\n#     unittest.main()\n```\n\n\
+      Ensure the generated code adheres to the above specifications and is ready for\
+      \ immediate use."
   implement_numeric_parsing_logic_combined:
     agent: false
-    description: Creates a unified numeric parsing module by merging two partial implementations,
-      removing duplicate parsers, and exposing a clean, type-annotated API that handles
-      endianness, validates input, and allows runtime extension of supported numeric
-      types. The module is ready for direct import by downstream workflow steps and
-      includes minimal test scaffolding for verification.
+    description: Creates a unified numeric parsing module by merging the two partial
+      implementations produced by `implement_numeric_parsing_logic_part1` and `implement_numeric_parsing_logic_part2`.
+      The final library exposes a clean, type‑annotated API (`parse_value`) that handles
+      endianness, validates input lengths, and allows runtime extension of supported
+      numeric types through a `register_parser` helper. Minimal unit‑test scaffolding
+      is included for quick verification, and the module is ready for direct import
+      by downstream workflow steps.
     name: implement_numeric_parsing_logic_combined
     nodes_depended_on:
     - implement_numeric_parsing_logic_part1
     - implement_numeric_parsing_logic_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: List of numeric type identifiers supported by the parser (e.g.,
-        'int8', 'float32').
-      key: supported_types
-      type: List[str]
-    - description: List of error messages encountered during validation or parsing.
-      key: error_messages
-      type: List[str]
-    - description: List of unit test names verifying the parsing logic, type support,
-        and error handling.
-      key: unit_test_names
-      type: List[str]
-    - description: Count of successfully consolidated parser definitions.
-      key: parser_entries_count
-      type: int
-    - description: Indicates whether the parser supports runtime extension for additional
-        numeric types.
-      key: is_extensible
-      type: bool
-    prompt: 'Merge the two partial numeric parsing implementations produced by
-
-
-      - **implement_numeric_parsing_logic_part1**
-
-      - **implement_numeric_parsing_logic_part2**
-
-
-      into a single, cohesive module.
-
-
-      **Requirements**
-
-      1. **Consolidation** – Import all unique function definitions from both parts,
-      resolving any duplicates by keeping one canonical implementation.
-
-      2. **Type Mapping** – Build a dictionary that maps the supported type identifiers
-      (e.g., ``''int16''``, ``''uint32''``, ``''float64''``) to the corresponding
-      parsing functions.
-
-      3. **Endianness Support** – Each parser must accept a ``byteorder`` argument
-      (`''little''` or `''big''`) and use the standard library ``struct`` module to
-      perform the conversion.
-
-      4. **Robust Error Handling** – Raise a descriptive ``ValueError`` for unsupported
-      types or insufficient byte length.
-
-      5. **API Design** – Expose a single function ``parse_value(data: bytes, type_name:
-      str, byteorder: str = ''little'') -> Any`` that looks up the appropriate parser.
-
-      6. **Documentation & Types** – Include clear docstrings, type annotations (Python
-      3.9+), and a minimal unit-test skeleton that verifies parsing for each supported
-      type.
-
-      7. **Extensibility** – Provide a ``register_parser`` helper so additional numeric
-      types can be added at runtime.
-
-
-      **Deliverables** – A single Python file containing:
-
-      - Necessary imports (``struct``, ``typing``).
-
-      - Consolidated parser functions.
-
-      - Parser registry and ``parse_value``.
-
-      - ``register_parser``.
-
-      - Inline unit test examples.
-
-
-      Ensure the final output can be imported as a module and that downstream nodes
-      depending on this implementation will receive a clean, well-documented API.'
+    prompt: "## Goal\nCreate a single Python module that merges the two partial numeric\
+      \ parsing implementations (`implement_numeric_parsing_logic_part1` and `implement_numeric_parsing_logic_part2`)\
+      \ into a cohesive, type‑annotated library.\n\n## Requirements\n1. **Consolidate**\
+      \ all unique parser functions from both parts, removing any duplicates by keeping\
+      \ a single canonical implementation.\n2. **Parser Signature** – Each parser\
+      \ must accept:\n   ```python\n   def parse_<type_name>(data: bytes, offset:\
+      \ int = 0, byteorder: str = \"little\") -> Any:\n   ```\n   * Validate that\
+      \ the buffer contains enough bytes for the type; raise a descriptive `ValueError`\
+      \ otherwise.\n   * Use the standard library `struct` module with the appropriate\
+      \ format character derived from the type’s size and signedness, honoring the\
+      \ requested `byteorder`.\n   * Return the unpacked native Python numeric value.\n\
+      3. **Registry** – Build a dictionary `PARSERS: Dict[str, Callable]` that maps\
+      \ supported type identifiers (e.g., `'int16'`, `'uint32'`, `'float64'`) to the\
+      \ corresponding parser functions.\n4. **API** – Expose a single function:\n\
+      \   ```python\n   def parse_value(data: bytes, type_name: str, byteorder: str\
+      \ = \"little\", offset: int = 0) -> Any:\n   ```\n   * Look up the parser in\
+      \ `PARSERS` and delegate the call.\n   * Raise a `ValueError` if `type_name`\
+      \ is not supported.\n5. **Extensibility** – Provide a helper:\n   ```python\n\
+      \   def register_parser(type_name: str, parser: Callable) -> None:\n   ```\n\
+      \   that adds a new parser to `PARSERS` at runtime.\n6. **Documentation & Types**\
+      \ – Include comprehensive docstrings, type annotations (Python 3.9+), and a\
+      \ minimal unit‑test skeleton that verifies parsing for each supported type.\n\
+      7. **Test Scaffolding** – Add a `if __name__ == \"__main__\":` block that runs\
+      \ a few example parses and asserts expected values.\n8. **Imports** – The module\
+      \ must import `struct`, `typing`, and any other standard modules required.\n\
+      \n## Deliverables\nOutput a single Python file containing:\n- All necessary\
+      \ imports.\n- Consolidated parser functions.\n- The `PARSERS` registry, `parse_value`,\
+      \ and `register_parser`.\n- Inline docstrings and type hints.\n- Minimal unit\
+      \ tests for each supported type.\n\nThe resulting module should be fully importable\
+      \ and immediately usable by downstream nodes in the workflow.\n"
   implement_numeric_parsing_logic_part1:
     agent: false
-    description: Generates the first phase of a numeric parsing library. Using the
-      final list of numeric types supplied by the previous node, this step creates
-      type‑specific parsing functions in Python that read raw binary data, honor endianness,
-      and perform robust validation. The resulting module can be imported directly
-      to decode structured binary payloads.
+    description: Creates the foundational stage of a numeric parsing library. Using
+      the canonical list of supported numeric types produced by the preceding node,
+      this step generates a Python module that defines a dedicated `parse_<type_name>`
+      function for each type. Each parser validates buffer length, applies the requested
+      endianness via the `struct` module, and returns the native numeric value. The
+      resulting module is fully type‑annotated, documented, and includes a concise
+      demo for immediate reuse in downstream decoding workflows.
     name: implement_numeric_parsing_logic_part1
     nodes_depended_on:
     - define_supported_numeric_types_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: A list of the canonical names of supported numeric types.
-      key: type_names
-      type: List[str]
-    - description: A list of parsed numeric values derived from the provided byte
-        arrays using type-specific parsing.
-      key: parsed_values
-      type: List[float]
-    - description: A list of error messages or warnings generated if specific validations
-        fail, such as byte length mismatches.
-      key: validation_errors
-      type: List[str]
-    prompt: 'Part 1: Using the combined list of supported numeric types (obtained
-      from the previous node), generate a Python module that implements parsing logic
-      for each type. For each numeric type, create a function `parse_<type_name>`
-      that accepts a `bytes` buffer, an `offset`, and an optional `endianness` parameter
-      (`''little''` or `''big''`).
-
-
-      Each function must:
-
-
-      1. **Validate length** – Confirm that the buffer contains enough bytes from
-      the given offset for the type’s size; raise `ValueError` with a clear message
-      if not.
-
-      2. **Unpack value** – Use the `struct` module to unpack the value according
-      to the type’s size and signedness, applying the requested endianness.
-
-      3. **Return result** – Return the parsed numeric value.
-
-
-      After defining all functions, include a concise example that parses a sample
-      byte array containing values of two or three different supported types. Add
-      all necessary imports (`struct`, `typing`). The code should be ready to copy
-      into a `.py` file and import elsewhere.
-
-
-      Output the complete, self‑contained code snippet with proper formatting and
-      docstrings for each function. No additional commentary is required beyond the
-      code itself.'
+    prompt: "Using the JSON array of supported numeric types provided by the previous\
+      \ node, produce a standalone Python module that:\n\n1. Imports `struct` and\
+      \ relevant types from `typing`.\n2. For every type object (e.g. `{\"type\":\
+      \ \"int16\", \"description\": \"...\"}`), defines a function `parse_<type_name>`\
+      \ that accepts:\n   - `buffer: bytes`\n   - `offset: int`\n   - `endianness:\
+      \ str = \"little\"` (either `'little'` or `'big'`).\n3. Inside each function:\n\
+      \   - Determine the struct format character and size based on the type name\
+      \ (e.g. `int16` → `h`, size 2; `uint32` → `I`, size 4; `float64` → `d`, size\
+      \ 8). Handle signedness appropriately.\n   - Validate that `len(buffer) - offset\
+      \ >= size`; if not, raise `ValueError` with a clear message such as `\"Buffer\
+      \ too small: required 2 bytes from offset 0, but buffer length is 1\"`.\n  \
+      \ - Construct the format string by prefixing the endianness symbol (`'<'` for\
+      \ little, `'>'` for big) to the format character.\n   - Unpack the value using\
+      \ `struct.unpack_from` and return the resulting scalar.\n4. Add comprehensive\
+      \ docstrings to each function explaining its purpose, parameters, return type,\
+      \ and error conditions.\n5. Include an `__all__` list enumerating all public\
+      \ parse functions.\n6. Provide a short example at the end of the module that\
+      \ demonstrates parsing a byte array containing values of at least two distinct\
+      \ supported types, printing the results. The example should be guarded by `if\
+      \ __name__ == \"__main__\":`.\n7. Ensure the final code block is fully formatted,\
+      \ self‑contained, and ready to be copied into a `.py` file for import.\n\nOutput\
+      \ ONLY the complete Python code snippet, with no additional explanatory text.\
+      \ The code must compile without modification.\n"
   implement_numeric_parsing_logic_part2:
     agent: false
-    description: Produces a set of reusable, type‑annotated parsing functions for
-      each numeric type defined in the merged supported types list, leveraging Python’s
-      struct module to correctly handle variable byte lengths, signedness, and endianness.
-      The generated functions return native Python numeric types and are designed
-      for seamless integration into binary data processing workflows.
+    description: Generates a fully type‑annotated Python module that contains a suite
+      of low‑level binary parsers for every numeric type defined by the merged supported‑types
+      list. Each parser correctly interprets the raw bytes according to size, signedness,
+      and endianness, leveraging the `struct` module for 1‑8 byte values and `int.from_bytes`
+      for 16 byte values. The resulting module is ready for direct import into any
+      binary‑data‑processing workflow, providing a single source of truth for numeric
+      extraction logic.
     name: implement_numeric_parsing_logic_part2
     nodes_depended_on:
     - define_supported_numeric_types_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: List of supported numeric types for which parsing functions are
-        generated (e.g., ['int8', 'uint16', 'float32']).
-      key: numeric_type_names
-      type: List[str]
-    - description: List of fully implemented Python function definitions as source
-        code strings for parsing each numeric type.
-      key: function_definitions
-      type: List[str]
-    - description: List of error messages that are handled in the parsing functions
-        (e.g., 'ValueError for unsupported endianness').
-      key: error_messages
-      type: List[str]
-    prompt: 'For every numeric type emitted by the *define_supported_numeric_types_combined*
-      node, generate a dedicated, fully type‑annotated Python parsing function.
-
-
-      *Input requirements*: each function must accept:
-
-      - `data: bytes` – the binary buffer containing the value.
-
-      - `offset: int = 0` – optional starting position within the buffer.
-
-      - `endianness: str = ''little''` – either `''little''` or `''big''`.
-
-
-      *Implementation details*:
-
-      1. Derive the correct `struct` format character from the type’s size (1, 2,
-      4, 8, or 16 bytes) and signedness.
-
-      2. Use `struct.unpack_from` to read the value at the specified offset and endianness.
-
-      3. Return the unpacked value, automatically casting to `int`, `float`, or `Decimal`
-      where appropriate.
-
-      4. Include robust error handling for out‑of‑range offsets and unsupported endianness.
-
-      5. Provide clear, concise docstrings that describe the parameters, the expected
-      binary representation, and the return type.
-
-
-      *Output*: a single Python module as a string that contains all functions, grouped
-      by numeric family (integers, floats, etc.), with necessary imports (`struct`,
-      `decimal`, `typing`). Each function should be preceded by a comment indicating
-      its target type.
-
-
-      This module should be immediately importable and usable by downstream parsing
-      pipelines.'
+    prompt: "# Parsing Module Generator\n\n## Input\nYou will receive a variable named\
+      \ `supported_types` containing a list of JSON objects. Each object represents\
+      \ a numeric type with at least the following keys:\n\n- **type** (`str`): the\
+      \ canonical type name (e.g., \"int16\", \"uint8\", \"float32\", \"decimal128\"\
+      ).\n- **description** (`str`): a human‑readable description.\n- Optional **size**\
+      \ (`int`): byte length of the representation (default inferred from the type\
+      \ name).\n- Optional **signed** (`bool`): whether the type is signed (default\
+      \ `True` for integer types unless the name starts with `uint`).\n\nExample:\n\
+      ```json\n[\n  {\"type\": \"int16\", \"description\": \"Signed 16‑bit integer\"\
+      },\n  {\"type\": \"uint8\", \"description\": \"Unsigned 8‑bit integer\"},\n\
+      \  {\"type\": \"float32\", \"description\": \"IEEE‑754 32‑bit float\"},\n  {\"\
+      type\": \"decimal128\", \"description\": \"128‑bit decimal number\"}\n]\n```\n\
+      \n## Task\nProduce a **single string** that is a valid Python module. This module\
+      \ must:\n\n1. **Imports**\n   ```python\n   import struct\n   import decimal\n\
+      \   from typing import Any\n   ```\n\n2. **Helper** – a small internal function\
+      \ `__validate_endianness(endianness: str) -> str` that normalises `\"little\"\
+      `/`\"big\"` and raises `ValueError` for invalid values.\n\n3. **Parsing functions**\
+      \ – for each entry in `supported_types` generate a function named `parse_<type>`\
+      \ where `<type>` is the `type` field converted to snake_case (e.g., `int16`\
+      \ → `parse_int16`).\n   *Signature*:\n   ```python\n   def parse_<type>(data:\
+      \ bytes, offset: int = 0, endianness: str = \"little\") -> Any:\n   ```\n  \
+      \ *Implementation details*:\n   - Determine the required byte length `n` from\
+      \ the type name or the optional `size` field.\n   - For **1, 2, 4, 8‑byte integers**\
+      \ use `struct.unpack_from` with the format character derived from the type name:\
+      \ `b`, `B`, `h`, `H`, `i`, `I`, `q`, `Q`.\n   - For **4, 8‑byte floats** use\
+      \ `f` and `d` respectively.\n   - For **16‑byte decimal (decimal128)**, use\
+      \ `int.from_bytes(..., signed=signed)` to get a Python `int`, then convert to\
+      \ `decimal.Decimal`.\n   - Handle **signedness** according to the `signed` field\
+      \ or inferred from the name (names starting with `uint` are unsigned).\n   -\
+      \ Validate `offset + n <= len(data)`; raise `ValueError` if the buffer is too\
+      \ small.\n   - Normalize `endianness` via the helper.\n   - Return the parsed\
+      \ value, automatically casting to `int`, `float`, or `decimal.Decimal` as appropriate.\n\
+      \n4. **Docstrings** – each function should have a concise docstring detailing:\n\
+      \   - Parameters (`data`, `offset`, `endianness`).\n   - Expected binary representation\
+      \ (byte order, signedness, size).\n   - Return type and semantics.\n\n5. **Grouping**\
+      \ – optionally add comments separating integer, floating‑point, and decimal\
+      \ parsers for readability.\n\n6. **Module-level constants** – expose a dictionary\
+      \ `TYPE_PARSERS` mapping the original type string to the corresponding function\
+      \ for quick lookup.\n\n## Output\nReturn **only** the string containing the\
+      \ entire module. Do not prepend or append any explanatory text. The module must\
+      \ be syntactically correct and immediately importable.\n\n---\n\n**Example output\
+      \ snippet** (truncated for brevity):\n```python\nimport struct\nimport decimal\n\
+      from typing import Any\n\n# Helper for endianness validation\n__ENDIANNESS_MAP\
+      \ = {\"little\": \"<\", \"big\": \">\"}\n\ndef __validate_endianness(endianness:\
+      \ str) -> str:\n    try:\n        return __ENDIANNESS_MAP[endianness]\n    except\
+      \ KeyError:\n        raise ValueError(\"Unsupported endianness: {endianness}\"\
+      )\n\n# Integer parsers\n\ndef parse_int16(data: bytes, offset: int = 0, endianness:\
+      \ str = \"little\") -> int:\n    \"\"\"Parse a signed 16‑bit integer from `data`\
+      \ starting at `offset`.\n\n    Parameters\n    ----------\n    data : bytes\n\
+      \        Binary buffer containing the value.\n    offset : int, default 0\n\
+      \        Starting position within the buffer.\n    endianness : str, default\
+      \ \"little\"\n        Either \"little\" or \"big\".\n\n    Returns\n    -------\n\
+      \    int\n        The unpacked integer.\n    \"\"\"\n    fmt = __validate_endianness(endianness)\
+      \ + \"h\"\n    if offset + 2 > len(data):\n        raise ValueError(\"Insufficient\
+      \ bytes for int16 at offset {offset}\")\n    return struct.unpack_from(fmt,\
+      \ data, offset)[0]\n\n# ... more parsers ...\n```\n```"
   integrate_parsing_logic_combined:
     agent: false
-    description: Creates a single, robust Python command‑line tool that consolidates
-      the codec‑aware numeric parsing logic from Part 1 and Part 2 into one executable
-      script. It merges all helper functions, ensures each is defined only once, harmonizes
-      argument namespaces, and provides comprehensive documentation, error handling,
-      and logging. The resulting script is self‑contained, import‑friendly, and ready
-      for unit testing and packaging.
+    description: Consolidates the codec‑aware numeric parsing logic from the two predecessor
+      nodes into a single, import‑friendly Python CLI application. It merges duplicate
+      helper functions, normalises argument handling, and delivers a polished, well‑documented
+      script with comprehensive error handling, logging, and output formatting. The
+      resulting tool is ready for unit testing, packaging, and distribution as a production‑grade
+      utility.
     name: integrate_parsing_logic_combined
     nodes_depended_on:
     - integrate_parsing_logic_part1
     - integrate_parsing_logic_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: The complete Python script content as a string that integrates
-        parsing logic for codecs and numeric types along with a CLI.
-      key: script_content
-      type: str
-    - description: List of codec names supported by the integrated parsing logic.
-      key: allowed_codecs
-      type: List[str]
-    - description: List of numeric types supported by the integrated parsing logic.
-      key: allowed_numeric_types
-      type: List[str]
-    - description: Example command lines to demonstrate the usage of the script.
-      key: example_command_lines
-      type: List[str]
-    - description: Indicates if the generated script compiles without any syntax errors.
-      key: successfully_compiles
-      type: bool
-    prompt: "Merge the source code excerpts produced by the `integrate_parsing_logic_part1`\
-      \ and `integrate_parsing_logic_part2` nodes into a single coherent Python file.\n\
-      \nThe merged script must:\n1. Import the combined `implement_codec_parsing_logic_combined`,\
-      \ `implement_numeric_parsing_logic_combined`, and `design_command_line_interface_combined`\
-      \ modules only once.\n2. Keep the parsing functions (`parse_codec`, `parse_numeric`,\
-      \ etc.) defined once; resolve any duplicate definitions by renaming or consolidating.\n\
-      3. Build a unified `argparse.ArgumentParser` that accepts:\n   - `--input-file`\
-      \ (required, path to binary file),\n   - `--codec` (choice of available codec\
-      \ names, default \"default_codec\"),\n   - `--numeric-type` (choice among numeric\
-      \ types, default \"uint32\"),\n   - optional verbosity flags.\n4. Call the appropriate\
-      \ parsing logic based on the chosen codec and numeric type, display results\
-      \ in a clean, human‑readable format, and log execution steps.\n5. Include comprehensive\
-      \ inline comments, a module docstring, and a `__main__` guard.\n6. Provide a\
-      \ brief example of how to run the script from the command line.\n\nMake sure\
-      \ the final script compiles and runs without syntax errors."
+    prompt: "Create a single, self‑contained Python 3.11+ script named `parse_cli.py`\
+      \ that consolidates the codec‑aware numeric parsing logic generated in the *Part 1*\
+      \ and *Part 2* nodes. The script must:\n\n1. **Import modules only once** –\
+      \ import `implement_codec_parsing_logic_combined`, `implement_numeric_parsing_logic_combined`,\
+      \ and `design_command_line_interface_combined` a single time at the top of the\
+      \ file.\n2. **Resolve duplicate definitions** – if either part defines functions\
+      \ such as `parse_codec` or `parse_numeric`, keep only one copy. If duplicates\
+      \ exist, rename or merge them to avoid re‑definition errors.\n3. **Build a unified\
+      \ `argparse.ArgumentParser`** that accepts:\n   - `--input-file` (required,\
+      \ path to a binary file) – alias `-i`.\n   - `--codec` (required, one of the\
+      \ codec names supported by the combined codec parser; default: `\"default_codec\"\
+      `) – alias `-c`.\n   - `--numeric-type` (required, one of the numeric types\
+      \ supported by the combined numeric parser; default: `\"uint32\"`) – alias `-n`.\n\
+      \   - Optional verbosity controls: `-v` for INFO, `-vv` for DEBUG, `-q` for\
+      \ WARNING.\n   - Optional `--output-file` (alias `-o`) to write output; if omitted,\
+      \ write to stdout.\n4. **Execute the parsing pipeline** – read the binary file,\
+      \ decode it with the selected codec, then interpret the decoded bytes as the\
+      \ chosen numeric type. The pipeline should be encapsulated in a single function\
+      \ `process_file` that returns either a string (human‑readable table) or a JSON‑serialisable\
+      \ list.\n5. **Display results** – by default output a neatly formatted table\
+      \ with row numbers and headers. If `--output-file` is supplied, write the table\
+      \ to that file; otherwise, print to stdout.\n6. **Logging and error handling**\
+      \ – use Python’s `logging` module. The log level is controlled by the verbosity\
+      \ flags. Provide clear, actionable error messages for missing files, unsupported\
+      \ codecs, or unsupported numeric types.\n7. **Documentation** – include a comprehensive\
+      \ module‑level docstring that explains purpose, dependencies, usage, and example\
+      \ command lines. Add inline comments that clarify the purpose of each block.\n\
+      8. **Executable guard** – protect the main entry point with `if __name__ ==\
+      \ \"__main__\":`.\n9. **Unit‑test friendliness** – expose the core orchestration\
+      \ as a callable function `process_file` so downstream nodes can import and test\
+      \ it.\n10. **Example usage** – at the end of the docstring, provide a short\
+      \ command‑line example: `python parse_cli.py -i data.bin -c base64 -n uint16\
+      \ -o output.txt`.\n\nThe final script should be syntactically correct, free\
+      \ of runtime errors, and ready to be packaged as a standalone CLI tool.\n"
   integrate_parsing_logic_part1:
     agent: false
-    description: Creates the first phase of a unified binary‑file parsing pipeline.
-      The node delivers a self‑contained Python module that stitches together the
-      combined codec and numeric parsing implementations, exposes a robust command‑line
-      interface, validates user input, applies the chosen codec and numeric type to
-      a binary file, and presents the interpreted data in a human‑readable format.
-      This foundational script is engineered for easy extension by subsequent nodes,
-      providing clear logging, error handling, and output versatility.
+    description: Orchestrates the first phase of a unified binary‑file parsing pipeline
+      by integrating codec‑decoding and numeric‑interpretation modules into a single,
+      extensible CLI‑driven script. It validates user input, applies the chosen codec
+      and numeric type with optional endianness handling, formats the interpreted
+      data into a human‑readable table or JSON, and emits detailed logging for auditability
+      and debugging. The design prioritizes modularity, enabling subsequent workflow
+      stages to extend or override the core pipeline without modification.
     name: integrate_parsing_logic_part1
     nodes_depended_on:
     - implement_codec_parsing_logic_combined
     - implement_numeric_parsing_logic_combined
     - design_command_line_interface_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: Indicates whether argument parsing was successful
-      key: argument_parsing_status
-      type: bool
-    - description: List of validated arguments provided to the CLI
-      key: validated_arguments
-      type: List[str]
-    - description: Indicates whether the binary file was successfully processed
-      key: file_processing_status
-      type: bool
-    - description: List of numeric data parsed from the binary file
-      key: parsed_data
-      type: List[float]
-    - description: Specifies the chosen output format (table or json)
-      key: output_format
-      type: str
-    - description: Logs capturing key execution steps and decisions
-      key: execution_logs
-      type: List[str]
-    prompt: "Produce a complete, well‑documented Python 3 script that implements the\
-      \ initial stage of the integrated parsing logic:\n\n1. **Imports** – Bring in\
-      \ the combined codec parsing function `parse_codec_file(file_path: str, codec_name:\
-      \ str) -> bytes` from the codec parsing module, the numeric parsing function\
-      \ `parse_numeric_data(data: bytes, numeric_type: str) -> List[Union[int, float]]`\
-      \ from the numeric parsing module, and the CLI specification from the combined\
-      \ CLI design node.\n\n2. **Argument parsing** – Use `argparse` (or the spec\
-      \ provided by the CLI design node) to accept:\n   - `--input` (`-i`): path to\
-      \ the binary file.\n   - `--codec` (`-c`): codec name (e.g., \"base64\", \"\
-      hex\", or a custom codec).\n   - `--numtype` (`-n`): numeric type (e.g., \"\
-      int32\", \"float64\", \"fixed16\").\n   - `--output` (`-o`): optional output\
-      \ file; if omitted, write to stdout.\n   - `--format` (`-f`): output format,\
-      \ either \"table\" or \"json\".\n   - `--verbose` (`-v`): verbosity level (0=ERROR,\
-      \ 1=WARNING, 2=INFO, 3=DEBUG).\n\n3. **Validation** – Ensure supplied codec\
-      \ and numeric type are supported; if not, print a clear error message and exit.\n\
-      \n4. **Processing pipeline** –\n   - Read the binary file.\n   - Decode it using\
-      \ the selected codec via `parse_codec_file`.\n   - Interpret the decoded bytes\
-      \ with `parse_numeric_data` using the chosen numeric type.\n\n5. **Formatting\
-      \ and output** –\n   - If `--format` is \"table\", display a neatly aligned\
-      \ table with row numbers and headers.\n   - If `--format` is \"json\", dump\
-      \ a JSON array of numeric values.\n   - Write the formatted output to the specified\
-      \ output file or stdout.\n\n6. **Logging** – Use Python's `logging` module;\
-      \ set the level based on `--verbose`. Log key stages: argument parsing, file\
-      \ I/O, decoding, numeric interpretation, and output generation.\n\n7. **Structure**\
-      \ – Include a top‑level README comment block explaining purpose and usage, type\
-      \ hints for all public functions, and a `main()` function protected by `if __name__\
-      \ == \"__main__\":` so the script can be both run and imported.\n\n8. **Extensibility**\
-      \ – Design the script so that additional parsing stages can be appended in later\
-      \ nodes without altering the core flow.\n\nProvide the full script with inline\
-      \ comments, type annotations, and a brief README at the top. The code should\
-      \ be ready to be imported or executed directly."
+    prompt: "# Integrated Binary‑File Parsing – Phase 1\n\nThis script stitches together\
+      \ the codec and numeric parsing logic into a single, reusable entry point. It:\n\
+      \n1. **Imports** the following public helpers:\n   - `parse_codec_file(file_path:\
+      \ str, codec_name: str) -> bytes` from the *codec* module.\n   - `parse_numeric_data(data:\
+      \ bytes, numeric_type: str, byteorder: str = \"little\") -> List[Union[int,\
+      \ float]]` from the *numeric* module.\n   - The canonical `CLI_SPEC` dictionary\
+      \ from the *design_command_line_interface_combined* node.\n\n2. **Argument parsing**\
+      \ uses the supplied `CLI_SPEC` (or `argparse` if the spec is absent) to accept:\n\
+      \   - `--input` (`-i`): path to the binary file.\n   - `--codec` (`-c`): codec\
+      \ name (e.g., ``\"base64\"``, ``\"hex\"``). Custom codecs are also accepted.\n\
+      \   - `--numtype` (`-n`): numeric type (e.g., ``\"int32\"``, ``\"float64\"``).\n\
+      \   - `--byteorder` (`-b`): byte‑endianess for numeric parsing (default ``\"\
+      little\"``).\n   - `--output` (`-o`): optional output file; if omitted, results\
+      \ are written to stdout.\n   - `--format` (`-f`): ``\"table\"`` or ``\"json\"\
+      ``.\n   - `--verbose` (`-v`): verbosity level (0=ERROR, 1=WARNING, 2=INFO, 3=DEBUG).\n\
+      \n3. **Validation** ensures the provided codec and numeric type exist in the\
+      \ corresponding registries; otherwise a descriptive error is logged and the\
+      \ program exits.\n\n4. **Processing pipeline**:\n   - Reads the binary file\
+      \ into memory.\n   - Decodes it via `parse_codec_file`.\n   - Parses the decoded\
+      \ bytes with `parse_numeric_data`.\n\n5. **Formatting & output**:\n   - For\
+      \ ``table`` format, a clean, column‑aligned table (row number, raw byte slice,\
+      \ interpreted value) is printed.\n   - For ``json`` format, a JSON array of\
+      \ numeric values is written.\n   - Output is directed to the specified file\
+      \ or stdout.\n\n6. **Logging**: A `logging` setup honours the chosen verbosity.\
+      \ Key stages (parsing, I/O, decoding, interpretation, formatting) are logged\
+      \ with timestamps.\n\n7. **Extensibility**: The module exposes the core pipeline\
+      \ as a function `run_pipeline(args: Namespace) -> None` that can be imported\
+      \ by downstream nodes. New codecs, numeric types, or output formats can be added\
+      \ by extending the registries or passing a custom `format_func` without touching\
+      \ the core.\n\n8. **Structure**: The script begins with a comprehensive README\
+      \ comment block, follows PEP‑8, and contains a `main()` guard so it may be executed\
+      \ directly or imported as a library.\n\nProvide the full, ready‑to‑run script\
+      \ with inline comments, type annotations, and the README header.\n\n**Dependencies**:\
+      \ `implement_codec_parsing_logic_combined`, `implement_numeric_parsing_logic_combined`,\
+      \ `design_command_line_interface_combined`."
   integrate_parsing_logic_part2:
     agent: false
-    description: Merges the codec‑aware and numeric parsing functions into a single,
-      fully‑featured CLI application. The script consumes the combined parsing implementations
-      and the unified command‑line specification generated by its predecessors, then
-      orchestrates argument validation, error handling, binary decoding, numeric interpretation,
-      and user‑centric output formatting. The goal is to deliver an end‑to‑end, production‑grade
-      Python program that can be invoked from the terminal to read any supported binary
-      file, apply the chosen codec and numeric type, and present the results in a
-      readable table or JSON payload.
+    description: Integrates the codec‑aware and numeric parsing modules into a single,
+      production‑ready command‑line tool. It loads the unified parsing functions,
+      dynamically constructs an argparse interface from the merged JSON spec, validates
+      inputs, streams binary files, dispatches decoding via the codec module, interprets
+      numeric values through the numeric module, and emits a polished table or JSON
+      payload. The script is fully type‑annotated, includes comprehensive logging,
+      graceful error handling, and exposes a `process_file` function for unit testing.
     name: integrate_parsing_logic_part2
     nodes_depended_on:
     - implement_codec_parsing_logic_combined
     - implement_numeric_parsing_logic_combined
     - design_command_line_interface_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: The numerical values parsed from the provided binary input based
-        on the selected codec and numeric type.
-      key: parsed_values
-      type: List[float]
-    - description: The format of the parsed output, either 'json' or 'text'.
-      key: output_format
-      type: str
-    - description: The codec used to decode the binary input.
-      key: codec_used
-      type: str
-    - description: The numeric type applied during parsing.
-      key: numeric_type_used
-      type: str
-    prompt: "Write a comprehensive Python script that:\n\n1. **Imports and wiring**\
-      \ – Import `Path` from `pathlib`, `argparse`, `logging`, and the merged parsing\
-      \ functions (`parse_with_codec` and `parse_numeric_data`) produced in the *implement_*\
-      \ nodes. Import the CLI specification JSON produced by `design_command_line_interface_combined`\
-      \ and use it to dynamically build the argument parser.\n2. **Argument parsing**\
-      \ – Use `argparse.ArgumentParser` to create a well‑documented CLI that accepts:\n\
-      \   * `--input` (required): path to the binary file.\n   * `--codec` (required):\
-      \ codec name (e.g., `utf‑8`, `utf‑16le`).\n   * `--numeric` (required): numeric\
-      \ type (`int`, `float`, `double`).\n   * Optional flags such as `--verbose`,\
-      \ `--output-format` (choices: `text`, `json`).\n   * Provide helpful help messages,\
-      \ default values, and type checks.\n3. **Validation & error handling** – Verify\
-      \ that the input file exists and is readable. Validate codec and numeric arguments\
-      \ against known lists. Log detailed error messages and exit gracefully on failure.\n\
-      4. **File reading** – Open the file in binary mode using `Path.read_bytes()`\
-      \ or a buffered stream. Optionally, support large files by streaming chunks.\n\
-      5. **Parsing logic** – First call `parse_with_codec(input_bytes, codec)` to\
-      \ obtain a decoded string. Then call `parse_numeric_data(decoded_str, numeric_type)`\
-      \ to interpret the payload as the selected numeric type. Show how both functions\
-      \ are composed.\n6. **Output formatting** – If `--output-format text`, display\
-      \ a neatly aligned table (use `tabulate` or manual formatting) with column headings\
-      \ `Index`, `Value`. If `json`, emit a JSON array of values with a top‑level\
-      \ key.\n7. **Logging & verbosity** – If `--verbose` is set, use the `logging`\
-      \ module to emit debug information about each step (e.g., file size, codec used,\
-      \ number of values parsed).\n8. **Entry point** – Wrap the main logic in a `main()`\
-      \ function and protect it with `if __name__ == \"__main__\": main()`.\n9. **Docstrings\
-      \ & comments** – Include a module‑level docstring explaining purpose, usage,\
-      \ and dependencies, and inline comments to clarify non‑obvious logic.\n10. **Testing\
-      \ hook** – Optionally expose the core parsing orchestration as a separate function\
-      \ (`process_file`) that can be unit‑tested.\n\nProvide the full source code\
-      \ with proper type annotations, error handling, and comments that make the script\
-      \ immediately runnable in a standard Python 3.11+ environment. The code should\
-      \ be ready for inclusion in a larger codebase or for distribution as a standalone\
-      \ utility. Ensure that the script imports only standard libraries and the modules\
-      \ generated by the *implement_* nodes.\n\n**Example skeleton to guide your implementation:**\n\
-      \n```python\n#!/usr/bin/env python3\n\"\"\"\nBinary Parser CLI – Combines codec\
-      \ and numeric parsing.\n\nDependencies:\n* parse_with_codec(input_bytes: bytes,\
-      \ codec: str) -> str\n* parse_numeric_data(decoded: str, numeric_type: str)\
-      \ -> List[Union[int, float]]\n\nUsage:\n    python parse_cli.py --input data.bin\
-      \ --codec utf-8 --numeric float\n\n\"\"\"\n\nfrom __future__ import annotations\n\
-      \nimport argparse\nimport json\nimport logging\nimport sys\nfrom pathlib import\
-      \ Path\nfrom typing import List, Union\n\n# Assume these functions are provided\
-      \ by previous nodes\nfrom codec_parsing import parse_with_codec\nfrom numeric_parsing\
-      \ import parse_numeric_data\n\n# Build argument parser based on the JSON spec\
-      \ from design_command_line_interface_combined\n\ndef build_parser() -> argparse.ArgumentParser:\n\
-      \    parser = argparse.ArgumentParser(\n        prog=\"parse_cli\",\n      \
-      \  description=\"Decode a binary file using a specified codec and numeric type.\"\
-      ,\n    )\n    parser.add_argument(\"--input\", required=True, type=Path, help=\"\
-      Path to the binary file.\")\n    parser.add_argument(\"--codec\", required=True,\
-      \ choices=[\"utf-8\", \"utf-16le\", \"base64\"], help=\"Codec to apply to the\
-      \ raw bytes.\")\n    parser.add_argument(\"--numeric\", required=True, choices=[\"\
-      int\", \"float\", \"double\"], help=\"Numeric interpretation of the decoded\
-      \ payload.\")\n    parser.add_argument(\"--output-format\", default=\"text\"\
-      , choices=[\"text\", \"json\"], help=\"Format of the parsed output.\")\n   \
-      \ parser.add_argument(\"--verbose\", action=\"store_true\", help=\"Enable verbose\
-      \ logging.\")\n    return parser\n\n\n# Core orchestration function – unit‑testable\n\
-      \ndef process_file(input_path: Path, codec: str, numeric: str, output_format:\
-      \ str) -> Union[str, List[Union[int, float]]]:\n    logging.debug(\"Reading\
-      \ file %s\", input_path)\n    raw_bytes = input_path.read_bytes()\n    logging.debug(\"\
-      Read %d bytes\", len(raw_bytes))\n\n    logging.debug(\"Applying codec: %s\"\
-      , codec)\n    decoded = parse_with_codec(raw_bytes, codec)\n    logging.debug(\"\
-      Decoded string length: %d\", len(decoded))\n\n    logging.debug(\"Parsing numeric\
-      \ data as %s\", numeric)\n    values = parse_numeric_data(decoded, numeric)\n\
-      \    logging.debug(\"Parsed %d numeric values\", len(values))\n\n    if output_format\
-      \ == \"json\":\n        return values\n    # default text format\n    table\
-      \ = \"Index\\tValue\\n\" + \"\\n\".join(f\"{i}\\t{v}\" for i, v in enumerate(values))\n\
-      \    return table\n\n\ndef main() -> None:\n    parser = build_parser()\n  \
-      \  args = parser.parse_args()\n\n    if args.verbose:\n        logging.basicConfig(level=logging.DEBUG,\
-      \ format=\"[%(levelname)s] %(message)s\")\n    else:\n        logging.basicConfig(level=logging.INFO,\
-      \ format=\"[%(levelname)s] %(message)s\")\n\n    if not args.input.is_file():\n\
-      \        logging.error(\"Input file not found: %s\", args.input)\n        sys.exit(1)\n\
-      \n    result = process_file(args.input, args.codec, args.numeric, args.output_format)\n\
-      \n    if args.output_format == \"json\":\n        print(json.dumps({\"values\"\
-      : result}, indent=2))\n    else:\n        print(result)\n\n\nif __name__ ==\
-      \ \"__main__\":\n    main()\n```"
+    prompt: "# Binary Parser CLI – Unified codec & numeric parsing\n\n```python\n\
+      #!/usr/bin/env python3\n\"\"\"A production‑grade CLI that stitches together\
+      \ codec‑aware decoding and numeric interpretation.\n\nThe script consumes:\n\
+      * :mod:`codec_parsing` – a dispatcher that decodes raw bytes into a string\n\
+      \  using any supported codec.\n* :mod:`numeric_parsing` – a registry of numeric\
+      \ parsers that interpret a decoded\n  string as an array of integers or floating‑point\
+      \ values.\n* A JSON description (generated by :mod:`design_command_line_interface_combined`)\n\
+      \  that defines the command‑line options.\n\nKey features:\n* **Dynamic argument\
+      \ construction** – the ``argparse`` instance is built from the\n  JSON spec\
+      \ so changes in the spec automatically propagate to the CLI.\n* **Robust validation**\
+      \ – file existence, codec/numeric support, and byte‑order\n  checks with clear\
+      \ error messages.\n* **Streaming support** – for files larger than the available\
+      \ RAM the script\n  reads in configurable chunks.\n* **Output flexibility**\
+      \ – human‑readable tables (via :mod:`tabulate`) or raw\n  JSON payloads.\n*\
+      \ **Extensible testing hook** – :func:`process_file` can be imported and unit\n\
+      \  tested independently of the command‑line interface.\n* **Comprehensive logging**\
+      \ – a ``--verbose`` flag toggles debug logs that\n  surface internal steps (file\
+      \ size, decoder used, number of values, etc.).\n\nDependencies are limited to\
+      \ the Python standard library, ``tabulate`` (which is\nbundled in the project)\
+      \ and the modules produced by the preceding workflow\nnodes.\n\"\"\"\n\nfrom\
+      \ __future__ import annotations\n\nimport argparse\nimport json\nimport logging\n\
+      import sys\nfrom pathlib import Path\nfrom typing import Any, Dict, List, Union\n\
+      \n# Local imports – provided by earlier nodes\nfrom codec_parsing import decode\
+      \ as decode_with_codec\nfrom numeric_parsing import parse_value\n\n# ---------------------------------------------------------------------------\n\
+      # Helper: Load the JSON CLI spec and build an ``argparse`` parser\n# ---------------------------------------------------------------------------\n\
+      \ndef load_cli_spec(path: Path) -> Dict[str, Any]:\n    \"\"\"Return the parsed\
+      \ JSON CLI specification.\n\n    The spec follows the schema produced by\n \
+      \   :mod:`design_command_line_interface_combined`.\n    \"\"\"\n    with path.open(\"\
+      r\", encoding=\"utf-8\") as fp:\n        return json.load(fp)\n\n\ndef build_parser(spec:\
+      \ Dict[str, Any]) -> argparse.ArgumentParser:\n    \"\"\"Create an ``ArgumentParser``\
+      \ configured from *spec*.\n\n    The function maps the JSON types to ``argparse``\
+      \ actions and enforces\n    defaults/required flags. Any conflict between the\
+      \ spec and argparse\n    expectations raises a :class:`ValueError`.\n    \"\"\
+      \"\n    parser = argparse.ArgumentParser(\n        prog=spec.get(\"name\", \"\
+      parse_cli\"),\n        description=spec.get(\"description\", \"Binary file parser\"\
+      ),\n    )\n\n    type_map = {\n        \"string\": str,\n        \"integer\"\
+      : int,\n        \"boolean\": lambda x: x.lower() in {\"1\", \"true\", \"yes\"\
+      , \"on\"},\n        \"list\": lambda x: [item.strip() for item in x.split(\"\
+      ,\") if item.strip()],\n    }\n\n    for arg in spec.get(\"arguments\", []):\n\
+      \        flag = arg.get(\"flag\") or arg.get(\"short\") or arg.get(\"long\"\
+      )\n        if not flag:\n            raise ValueError(f\"Argument missing flag\
+      \ in spec: {arg}\")\n        kwargs: Dict[str, Any] = {\n            \"help\"\
+      : arg.get(\"help\", \"\"),\n            \"required\": arg.get(\"required\",\
+      \ False),\n        }\n        # Resolve type\n        arg_type = type_map.get(arg.get(\"\
+      type\", \"string\"))\n        if arg_type is None:\n            raise ValueError(f\"\
+      Unsupported argument type: {arg.get('type')}\")\n        kwargs[\"type\"] =\
+      \ arg_type\n        # Handle defaults\n        if \"default\" in arg:\n    \
+      \        kwargs[\"default\"] = arg[\"default\"]\n        # For choice arguments\
+      \ use the 'choices' field if present\n        if \"choices\" in arg:\n     \
+      \       kwargs[\"choices\"] = arg[\"choices\"]\n\n        parser.add_argument(flag,\
+      \ **kwargs)\n\n    return parser\n\n# ---------------------------------------------------------------------------\n\
+      # Core orchestration – unit‑testable\n# ---------------------------------------------------------------------------\n\
+      \ndef process_file(\n    input_path: Path,\n    codec: str,\n    numeric: str,\n\
+      \    output_format: str,\n    byteorder: str = \"little\",\n    chunk_size:\
+      \ int = 64 * 1024,\n) -> Union[str, List[Any]]:\n    \"\"\"Read *input_path*,\
+      \ decode with *codec* and interpret as *numeric*.\n\n    Parameters\n    ----------\n\
+      \    input_path : Path\n        Path to the binary file.\n    codec : str\n\
+      \        Name of the codec recognised by :func:`decode_with_codec`.\n    numeric\
+      \ : str\n        Key understood by :func:`parse_value`.\n    output_format :\
+      \ str\n        Either ``\"text\"`` or ``\"json\"``.\n    byteorder : str, optional\n\
+      \        Endianness for numeric parsing (``\"little\"`` or ``\"big\"``).\n \
+      \   chunk_size : int, optional\n        When greater than the file size the\
+      \ whole file is read at once;\n        otherwise the file is streamed in *chunk_size*‑byte\
+      \ blocks.\n\n    Returns\n    -------\n    str | list[Any]\n        Table string\
+      \ for ``text`` or the list of values for ``json``.\n    \"\"\"\n    logging.debug(\"\
+      Reading file %s\", input_path)\n    if input_path.is_file():\n        file_size\
+      \ = input_path.stat().st_size\n        logging.debug(\"File size: %d bytes\"\
+      , file_size)\n        if file_size <= chunk_size:\n            raw_bytes = input_path.read_bytes()\n\
+      \        else:\n            # Stream in chunks – useful for very large files\n\
+      \            raw_bytes = bytearray()\n            with input_path.open(\"rb\"\
+      ) as fp:\n                while True:\n                    chunk = fp.read(chunk_size)\n\
+      \                    if not chunk:\n                        break\n        \
+      \            raw_bytes.extend(chunk)\n    else:\n        raise FileNotFoundError(f\"\
+      Input file does not exist: {input_path}\")\n\n    logging.debug(\"Applying codec:\
+      \ %s\", codec)\n    decoded_text = decode_with_codec(codec, bytes(raw_bytes))\n\
+      \n    logging.debug(\"Parsing numeric data as %s with byteorder=%s\", numeric,\
+      \ byteorder)\n    values = parse_value(decoded_text.encode(\"utf-8\"), numeric,\
+      \ byteorder=byteorder)\n\n    if output_format == \"json\":\n        return\
+      \ values\n\n    # Default – pretty table\n    try:\n        from tabulate import\
+      \ tabulate\n    except ImportError:  # pragma: no cover\n        # Fallback\
+      \ manual formatting\n        table_lines = [\"Index\\tValue\"] + [f\"{i}\\t{v}\"\
+      \ for i, v in enumerate(values)]\n        return \"\\n\".join(table_lines)\n\
+      \    else:\n        headers = [\"Index\", \"Value\"]\n        rows = [[i, v]\
+      \ for i, v in enumerate(values)]\n        return tabulate(rows, headers=headers,\
+      \ tablefmt=\"grid\")\n\n# ---------------------------------------------------------------------------\n\
+      # CLI entry point\n# ---------------------------------------------------------------------------\n\
+      \ndef main() -> None:\n    # Load spec from the JSON file generated by the design\
+      \ node\n    spec_path = Path(\"cli_spec.json\")\n    if not spec_path.is_file():\n\
+      \        logging.error(\"CLI specification file not found: %s\", spec_path)\n\
+      \        sys.exit(1)\n\n    spec = load_cli_spec(spec_path)\n    parser = build_parser(spec)\n\
+      \    args = parser.parse_args()\n\n    # Configure logging level\n    log_level\
+      \ = logging.DEBUG if getattr(args, \"verbose\", False) else logging.INFO\n \
+      \   logging.basicConfig(level=log_level, format=\"[%(levelname)s] %(message)s\"\
+      )\n\n    try:\n        result = process_file(\n            input_path=Path(args.input),\n\
+      \            codec=getattr(args, \"codec\", \"utf-8\"),\n            numeric=getattr(args,\
+      \ \"numeric\", \"int\"),\n            output_format=getattr(args, \"output_format\"\
+      , \"text\"),\n            byteorder=getattr(args, \"byteorder\", \"little\"\
+      ),\n            chunk_size=getattr(args, \"chunk_size\", 64 * 1024),\n     \
+      \   )\n    except Exception as exc:  # pragma: no cover - runtime errors\n \
+      \       logging.exception(\"Failed to process file: %s\", exc)\n        sys.exit(1)\n\
+      \n    if getattr(args, \"output_format\", \"text\") == \"json\":\n        print(json.dumps({\"\
+      values\": result}, indent=2))\n    else:\n        print(result)\n\n\nif __name__\
+      \ == \"__main__\":\n    main()\n```\n\n*The above script is fully type‑annotated,\
+      \ includes defensive error handling, and is ready for immediate use or further\
+      \ extension.*"
   write_test_cases_combined:
     agent: false
-    description: Consolidates the two partial test case lists produced by the preceding
-      stages into a single, deduplicated array. The output is a deterministic JSON
-      object containing the merged test cases, sorted alphabetically by `test_name`,
-      and enriched with a `merge_timestamp` field for auditability.
+    description: Consolidates the two independent test‑case arrays from `write_test_cases_part1`
+      and `write_test_cases_part2` into a single, deduplicated, alphabetically sorted
+      collection. The node guarantees deterministic output, enriches the result with
+      a UTC timestamp for auditability, and produces a clean JSON object suitable
+      for downstream validation and reporting.
     name: write_test_cases_combined
     nodes_depended_on:
     - write_test_cases_part1
     - write_test_cases_part2
     nodes_dependent_on: []
-    output_structure:
-    - description: List of all test case names after merging and deduplication, sorted
-        alphabetically.
-      key: test_names
-      type: List[str]
-    - description: List of input byte sequences corresponding to all test cases in
-        the merged set.
-      key: input_bytes
-      type: List[str]
-    - description: List of expected outputs for each test case in JSON-serialized
-        string form (e.g., numbers or strings).
-      key: expected_outputs
-      type: List[str]
-    - description: List of expected error messages or `null` for successful cases
-        in string form.
-      key: expected_errors
-      type: List[str]
-    - description: Timestamp in ISO 8601 format indicating when the merge operation
-        was performed.
-      key: merge_timestamp
-      type: str
-    prompt: 'Merge the JSON arrays returned by `write_test_cases_part1` and `write_test_cases_part2`
-      into a single array named `merged_test_cases`. Perform a deep field‑by‑field
-      comparison (using `test_name`, `input_bytes`, `expected_output`, and `expected_error`)
-      to identify exact duplicates. If a duplicate appears in Part 2, retain the instance
-      from Part 1 and discard the duplicate from Part 2. Preserve the relative order
-      of unique items: first all entries from Part 1, then the unique entries from
-      Part 2. After deduplication, sort the resulting array alphabetically by `test_name`.
-      Finally, wrap the array in an object that includes a top‑level field `merge_timestamp`
-      set to the current UTC time in ISO 8601 format. Return the complete JSON object.'
+    prompt: "1. **Load Inputs** – Accept two JSON arrays named `write_test_cases_part1`\
+      \ and `write_test_cases_part2`, each containing objects that adhere to the following\
+      \ schema:\n   ```json\n   {\n     \"test_name\": \"<string>\",\n     \"input_bytes\"\
+      : \"<hex_or_ascii_string>\",\n     \"expected_output\": <JSON‑serializable>,\n\
+      \     \"expected_error\": \"<string>\" | null\n   }\n   ```\n\n2. **Validate\
+      \ Structure** – Verify that every element in both arrays is an object with the\
+      \ four mandatory keys. If any element fails validation, halt with a descriptive\
+      \ error (the downstream harness will treat the node as failed).\n\n3. **Create\
+      \ a Canonical Key** – For each test case, construct a canonical key that uniquely\
+      \ identifies the full record:\n   ```python\n   key = json.dumps([tc[\"test_name\"\
+      ], tc[\"input_bytes\"], tc[\"expected_output\"], tc[\"expected_error\"]], sort_keys=True)\n\
+      \   ```\n   This ensures that duplicates are detected by value, not by reference.\n\
+      \n4. **Merge While Preserving Order** – Iterate over `write_test_cases_part1`\
+      \ first, appending each test case to a result list and marking its key as seen.\
+      \ Then iterate over `write_test_cases_part2`; if a test case’s key has already\
+      \ been seen, skip it; otherwise append it to the result list and mark the key.\n\
+      \n5. **Alphabetical Sorting** – Sort the merged list alphabetically by the `test_name`\
+      \ field. Since the merge already guarantees uniqueness, sorting is stable and\
+      \ deterministic.\n\n6. **Timestamp Generation** – Capture the current UTC time\
+      \ in ISO 8601 format with a trailing `Z` (e.g., `2026-01-10T14:22:33Z`).\n\n\
+      7. **Construct Output Object** – Return a single JSON object with two top‑level\
+      \ keys:\n   ```json\n   {\n     \"merged_test_cases\": <array_of_test_cases>,\n\
+      \     \"merge_timestamp\": \"<ISO‑8601‑UTC>\"\n   }\n   ```\n\n8. **Serialization**\
+      \ – Produce compact JSON (no superfluous whitespace) so that downstream nodes\
+      \ receive a consistent, machine‑readable payload.\n\nThis procedure guarantees\
+      \ a deterministic, deduplicated test‑case set, ready for integration testing\
+      \ and audit purposes."
   write_test_cases_part1:
     agent: false
-    description: Generate the first part of a comprehensive, schema-driven set of
-      test cases for the integrated parsing logic. The node outputs a JSON array that
-      covers every supported codec and numeric type, including boundary conditions,
-      typical values, and deliberately malformed inputs to verify robust error handling.
+    description: Generates a comprehensive, schema‑driven set of test cases that exercise
+      the integrated parsing logic across all supported codecs and numeric types.
+      Each test case includes boundary, typical, and malformed inputs to validate
+      correctness and error handling. The node emits a strictly valid JSON array of
+      test objects sorted alphabetically by `test_name`, suitable for automated unit
+      testing (e.g., pytest).
     name: write_test_cases_part1
     nodes_depended_on:
     - integrate_parsing_logic_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: A descriptive identifier for the test case following `<codec>_<numeric_type>_<condition>`
-        format.
-      key: test_name
-      type: str
-    - description: A raw hexadecimal or ASCII string representing the encoded byte
-        sequence.
-      key: input_bytes
-      type: str
-    - description: The value that the parsing function should return, serialized as
-        a string if necessary.
-      key: expected_output
-      type: str
-    - description: A string describing the expected exception or `null` for valid
-        cases.
-      key: expected_error
-      type: str
-    prompt: "Part 1: Produce an exhaustive set of test cases that exercise all codecs\
-      \ (base64, hex, url‑safe, binary, etc.) and numeric types (int8, uint8, int16,\
-      \ uint16, int32, uint32, int64, uint64, float32, float64) used by the parsing\
-      \ logic.\n\nFor each test case, provide:\n\n• **test_name** – A descriptive\
-      \ identifier following the pattern `<codec>_<numeric_type>_<condition>` (e.g.,\
-      \ `base64_int32_max`).\n• **input_bytes** – A raw hexadecimal string representing\
-      \ the encoded byte sequence. For numeric types encode the value in **big‑endian**\
-      \ order before converting to hex. For base64 and url‑safe, encode the underlying\
-      \ bytes using the respective encoding and then present the result as a plain\
-      \ ASCII string.\n• **expected_output** – The value that the parsing function\
-      \ should return. Use JSON‑serializable primitives: numbers, strings, or JSON\
-      \ objects where necessary.\n• **expected_error** – A string describing the expected\
-      \ exception (e.g., `\"ValueError: overflow\"`) or `null` if the input is valid.\n\
-      \nThe output must be a **strict JSON array** of these objects, sorted alphabetically\
-      \ by `test_name`. Each object must exactly match the schema:\n```json\n{\n \
-      \ \"test_name\": \"<string>\",\n  \"input_bytes\": \"<hex_or_ascii_string>\"\
-      ,\n  \"expected_output\": <JSON-serializable value>,\n  \"expected_error\":\
-      \ <string_or_null>\n}\n```\n\nCoverage requirements:\n- **Boundary values**:\
-      \ minimum, maximum, zero, negative (where applicable), mid‑range.\n- **Typical\
-      \ values**: representative mid‑range numbers.\n- **Malformed inputs**: wrong\
-      \ length, invalid characters for the codec, unsupported numeric type.\n- **Error\
-      \ messages**: follow the patterns `Invalid input length for <codec>`, `OverflowError`,\
-      \ `ValueError: unsupported codec`.\n\nExample snippets (do not include these\
-      \ in the final output):\n```json\n{\n  \"test_name\": \"hex_int32_min\",\n \
-      \ \"input_bytes\": \"80000000\",\n  \"expected_output\": -2147483648,\n  \"\
-      expected_error\": null\n}\n```\n```json\n{\n  \"test_name\": \"base64_float64_invalid_length\"\
-      ,\n  \"input_bytes\": \"Qw==\",\n  \"expected_output\": null,\n  \"expected_error\"\
-      : \"Invalid input length for base64\"\n}\n```\n\nReturn only the JSON array,\
-      \ with no comments or extraneous keys, and ensure it is syntactically valid\
-      \ JSON. Do **not** wrap the array in any additional objects."
+    prompt: "You are to generate a comprehensive, schema‑driven set of test cases\
+      \ that exercise the integrated parsing logic across every supported codec and\
+      \ numeric type. The output must be a **strict JSON array** of objects, sorted\
+      \ alphabetically by the field `test_name`. Each object must match the schema:\n\
+      \n```json\n{\n  \"test_name\": \"<string>\",\n  \"input_bytes\": \"<hex_or_ascii_string>\"\
+      ,\n  \"expected_output\": <JSON‑serializable value>,\n  \"expected_error\":\
+      \ <string_or_null>\n}\n```\n\n**Requirements**\n1. **Coverage** – Include boundary\
+      \ values (min, max, zero, negative where applicable, mid‑range), typical mid‑range\
+      \ values, and malformed inputs (wrong length, invalid codec characters, unsupported\
+      \ numeric type). \n2. **Codec set** – `base64`, `hex`, `url‑safe`, `binary`,\
+      \ and any codec that may be added later.\n3. **Numeric types** – `int8`, `uint8`,\
+      \ `int16`, `uint16`, `int32`, `uint32`, `int64`, `uint64`, `float32`, `float64`.\n\
+      4. **Encoding rules**:\n   * For numeric types, encode the value in **big‑endian**\
+      \ order, then express the raw byte sequence as a lowercase hexadecimal string.\n\
+      \   * For `base64` and `url‑safe`, encode the raw bytes (as defined above) with\
+      \ the appropriate alphabet, then present the result as a plain ASCII string.\n\
+      5. **test_name** – Must follow the pattern `<codec>_<numeric_type>_<condition>`,\
+      \ e.g., `base64_int32_max`.\n6. **expected_error** – Provide a descriptive error\
+      \ string if the input is invalid (e.g., `\"Invalid input length for base64\"\
+      `, `\"OverflowError\"`, `\"ValueError: unsupported codec\"`); otherwise set\
+      \ to `null`.\n7. **No extraneous content** – The output must contain **only**\
+      \ the JSON array; omit comments, explanations, or any surrounding objects.\n\
+      \n**Example** (for reference – do not include in the final output):\n```json\n\
+      {\n  \"test_name\": \"hex_int32_min\",\n  \"input_bytes\": \"80000000\",\n \
+      \ \"expected_output\": -2147483648,\n  \"expected_error\": null\n}\n```\n\n\
+      **Deliverable** – Return the JSON array of test case objects satisfying all\
+      \ the above constraints.\n\nEnsure the array is syntactically valid JSON and\
+      \ that the objects are sorted alphabetically by `test_name`.\n\n**End of prompt.**"
   write_test_cases_part2:
     agent: false
-    description: Generate the second half of a comprehensive test case suite for the
-      integrated parsing logic, covering all remaining codecs, numeric types, and
-      error scenarios with precise input and expected outcome specifications.
+    description: Creates the second, fully‑specified half of a deterministic test
+      case suite for the integrated parsing logic. The node emits a JSON array of
+      test objects that cover all remaining codecs, numeric types, and edge‑case error
+      conditions, providing precise input bytes and expected outcomes for validation.
     name: write_test_cases_part2
     nodes_depended_on:
     - integrate_parsing_logic_combined
     nodes_dependent_on: []
-    output_structure:
-    - description: List of descriptive identifiers for the test cases.
-      key: test_names
-      type: List[str]
-    - description: List of raw hexadecimal strings representing encoded byte sequences
-        for the test cases.
-      key: input_bytes_list
-      type: List[str]
-    - description: List of JSON-escaped output values or 'null' for invalid inputs.
-      key: expected_outputs
-      type: List[str]
-    - description: List of fully-qualified error names (e.g., `ValueError`) or 'null'
-        to indicate no errors for successful cases.
-      key: expected_errors
-      type: List[str]
-    prompt: "Part 2: Draft a comprehensive, deterministic test suite covering all\
-      \ remaining codecs and numeric types. For each test case, output a JSON object\
-      \ with:\n\n- **test_name**: Descriptive identifier (e.g., `int32_max_valid`).\n\
-      - **input_bytes**: Raw hexadecimal string (no `0x` prefixes, all lowercase,\
-      \ no spaces).\n- **expected_output**: Decoded Python value (numeric in decimal,\
-      \ string literal in JSON‑escaped form) or `null` if decoding should fail.\n\
-      - **expected_error**: Fully‑qualified error class name (e.g., `ValueError`)\
-      \ or `null` for successful cases.\n\nThe test cases must exercise:\n  • Signed\
-      \ and unsigned integers (8, 16, 32, 64‑bit) at boundaries, including zero, min,\
-      \ and max values.\n  • Floating‑point values in IEEE‑754 single and double,\
-      \ covering normal numbers, subnormals, zero, infinities, and NaN.\n  • Variable‑length\
-      \ encodings such as Varint and ZigZag, including over‑length and malformed examples.\n\
-      \  • String codecs (UTF‑8, ASCII, custom delimiters) with valid sequences and\
-      \ intentional invalid bytes.\n  • Composite structures (arrays, maps) with nested\
-      \ elements, boundary lengths, and empty containers.\n\nReturn the full list\
-      \ as a single JSON array, suitable for ingestion by the integration test harness.\
-      \ All numeric outputs should be in decimal; strings must be properly JSON‑escaped.\
-      \ Do not include any metadata beyond the specified fields."
+    prompt: "# Test Case Generation Specification (Part 2)\n\nGenerate the second\
+      \ half of a deterministic test suite for the integrated parsing logic. Each\
+      \ test case must be emitted as a JSON object with the following fields:\n\n\
+      - **test_name** *(string)*: A unique, snake‑case identifier (e.g., `int32_min_invalid`).\n\
+      - **input_bytes** *(string)*: Raw hexadecimal representation of the byte sequence\
+      \ to feed to the parser. No `0x` prefixes, all lowercase, no whitespace.\n-\
+      \ **expected_output** *(JSON value)*: The decoded Python value. Numeric values\
+      \ must be in decimal form, string values must be JSON‑escaped, and `null` indicates\
+      \ a decoding failure.\n- **expected_error** *(string)*: Fully‑qualified exception\
+      \ class name expected on failure (e.g., `ValueError`), or `null` for successful\
+      \ parsing.\n\nThe generated JSON array must:\n\n1. Contain exactly one object\
+      \ per test case.\n2. Be sorted lexicographically by `test_name` to guarantee\
+      \ deterministic order.\n3. Include no additional keys or metadata.\n\nTest coverage\
+      \ requirements:\n\n- **Signed / Unsigned Integers**: 8, 16, 32, 64‑bit, with\
+      \ boundary values (zero, min, max, overflow), signed max/min, and a negative\
+      \ overflow example for signed types.\n- **Floating‑Point Numbers**: IEEE‑754\
+      \ single and double precision covering\n  - Normal numbers (max positive/negative,\
+      \ min positive subnormals).\n  - Zero (positive and negative).\n  - Positive\
+      \ and negative infinity.\n  - NaN (single and double). The parser should return\
+      \ a `float` representing `nan`.\n- **Variable‑Length Encodings**: Varint and\
+      \ ZigZag.\n  - Valid encoded values covering small, medium, and large integers.\n\
+      \  - Over‑length encodings (more bytes than necessary).\n  - Malformed encodings\
+      \ (missing continuation bits, invalid ZigZag mapping).\n- **String Codecs**:\
+      \ UTF‑8, ASCII, and a custom delimiter‑based codec.\n  - Valid sequences for\
+      \ each codec.\n  - Invalid byte sequences that should trigger decoding errors.\n\
+      - **Composite Structures**: Arrays, maps, and nested combinations.\n  - Empty\
+      \ containers.\n  - Maximum length containers (e.g., array of 255 elements, map\
+      \ with 255 key/value pairs).\n  - Mixed type entries (int, string, float) within\
+      \ a single container.\n\nEach test case must be accompanied by a concise `test_name`\
+      \ that reflects the scenario. For example:\n\n```json\n{\n  \"test_name\": \"\
+      int32_min_invalid\",\n  \"input_bytes\": \"fffe\",\n  \"expected_output\": null,\n\
+      \  \"expected_error\": \"ValueError\"\n}\n```\n\nThe final output should be\
+      \ a single JSON array containing all test case objects. No surrounding metadata\
+      \ or comments are allowed. Ensure that the JSON is valid and that all string\
+      \ values are properly escaped.\n\n---\n\n**Deliverable**: A JSON array (as a\
+      \ string) that can be piped directly into the integration test harness.\n"
